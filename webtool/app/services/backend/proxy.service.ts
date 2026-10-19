@@ -1,4 +1,4 @@
-import { type NetworkEvent, NetworkEventApiSchema, type NetworkStat, NetworkStatApiSchema } from '../../../shared/network'
+import { type NetworkEvent, NetworkEventApiSchema, type NetworkStat, NetworkStatApiSchema } from '~~/shared/network'
 
 export async function getNetworks(): Promise<NetworkStat[]> {
   const response = await fetch('/proxy/networks')
