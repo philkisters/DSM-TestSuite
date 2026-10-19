@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: dsm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dsm}
+      POSTGRES_DB: dsm
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dsm -d dsm"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    build: ./migrations
+    environment:
+      DATABASE_URL: postgresql+psycopg://dsm:${POSTGRES_PASSWORD:-dsm}@postgres:5432/dsm
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  proxy:
+    build:
+      context: .
+      dockerfile: Proxy/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://dsm:${POSTGRES_PASSWORD:-dsm}@postgres:5432/dsm
+      PROXY_PORT: "9000"
+      ADMIN_PORT: "8080"
+      REGISTER_PORT: "9001"
+    ports:
+      - "9000:9000"  # message relay for student peers 
+      - "9001:9001"  # peer registration
+      - "127.0.0.1:8080:8080"   # admin/health, local only
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  testsuite:
+    build:
+      context: .
+      dockerfile: TestSuite/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://dsm:${POSTGRES_PASSWORD:-dsm}@postgres:5432/dsm
+      PROXY_ADMIN_URL: http://proxy:8080
+      ORCHESTRATOR_PORT: "9090"
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  webtool:
+    build: ./webtool
+
+  gateway:
+    image: nginx:alpine
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - webtool
+      - testsuite
+      - proxy
+
+volumes:
+  pgdata:

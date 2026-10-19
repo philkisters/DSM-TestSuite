@@ -1,0 +1,21 @@
+[project]
+name = "dsm-proxy"
+version = "0.1.0"
+description = "Routing proxy and network flight recorder for the DSM lab"
+requires-python = ">=3.12"
+dependencies = [
+    "asyncpg>=0.29",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "dsm-protocol",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.uv.sources]
+dsm-protocol = { path = "../dsm-protocol", editable = true }

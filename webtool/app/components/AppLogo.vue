@@ -1,0 +1,23 @@
+<template>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" role="img" aria-labelledby="title">
+    <title id="title">DSM Logo</title>
+    <g fill="none" stroke="var(--ui-primary)" stroke-width="20">
+      <path d="m309 142 201 33"/>
+      <path d="m182 193-56 106"/>
+      <path d="m270 199 73 113"/>
+      <path d="m534 246-86 75"/>
+      <path d="m630 258 20 38"/>
+      <path d="m149 421 174 160"/>
+      <path d="M384 457v98"/>
+      <path d="m625 421-180 160"/>
+    </g>
+    <g fill="var(--ui-primary)">
+      <circle cx="229" cy="132" r="59"/>
+      <circle cx="588" cy="191" r="59"/>
+      <circle cx="85" cy="369" r="59"/>
+      <circle cx="391" cy="377" r="59"/>
+      <circle cx="683" cy="369" r="59"/>
+      <circle cx="384" cy="636" r="59"/>
+    </g>
+  </svg>
+</template>
