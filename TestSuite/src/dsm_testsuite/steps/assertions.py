@@ -44,7 +44,7 @@ class PeerNotRegistered(_PeerStep):
 @assertion("not-joined")
 class NotJoined(_PeerStep):    
     async def execute(self, ctx: StepContext) -> None:
-        # Implement the logic to check if the peer has not joined the network        
+        # Implement the logic to check if the peer has not joined a p2p network        
         try:
             response_message : Message = await ctx.proxy.send_get_neighborsmessage(self.peer_name)
         except Exception as exc:
@@ -52,6 +52,19 @@ class NotJoined(_PeerStep):
 
         if response_message.code != MessageCode.ERROR :
             raise AssertionFailed(f"peer needs to return an ErrorMessage when it has not in a P2P network")
+
+@assertion("joined")
+class Joined(_PeerStep):
+    async def execute(self, ctx: StepContext) -> None:
+        # Implement the logic to check if the peer is part of a p2p network
+        try:
+            response_message : Message = await ctx.proxy.send_get_neighborsmessage(self.peer_name)
+        except Exception as exc:
+            raise AssertionFailed(f"failed to send GetNeighborsMessage to {self.peer_name!r}: {exc!r}") from exc
+
+        if response_message.code != MessageCode.GET_NEIGHBORS_RESPONSE :
+            raise AssertionFailed(f"peer needs to return a GET_NEIGHBORS_RESPONSE message when it has joined the network")
+
 
 @assertion("neighbors")
 class Neighbors(_PeerStep):
@@ -71,9 +84,12 @@ class Neighbors(_PeerStep):
         if response_message.code != MessageCode.GET_NEIGHBORS_RESPONSE:
             raise AssertionFailed(f"The peer should return a GET_NEIGHBORS_RESPONSE message. Received a message with the code '${response_message.code}' instead.")
         
-        if (response_message.content.successor == None or response_message.content.predecessor == None):
-            raise AssertionFailed(f"The response for GET_NEIGHBORS message should contain a 'predecessor' and 'successor' field.")
+        if "successor" not in response_message.content or "predecessor" not in response_message.content:
+            raise AssertionFailed("The response for GET_NEIGHBORS message should contain 'predecessor' and 'successor' keys inthe content dictionary")
+
+        if response_message.content["successor"] is None or response_message.content["predecessor"] is None:
+            raise AssertionFailed(f"The 'predecessor' and 'successor' should never be None/Undefined.")
         
-        if (response_message.content.successor.name != self.successor or response_message.content.predecessor.name != self.predecessor):
-            raise AssertionFailed(f"The response returned unexpected neighbors: successor ${response_message.content.successor.name} (should be ${self.successor}); predecessor ${response_message.content.predecessor.name} (should be ${self.predecessor}).") 
+        if (response_message.content["successor"]["peer_id"] != self.successor or response_message.content["predecessor"]["peer_id"] != self.predecessor):
+            raise AssertionFailed(f"The response returned unexpected neighbors: successor ${response_message.content['successor']['peer_id']} (should be ${self.successor}); predecessor ${response_message.content['predecessor']['peer_id']} (should be ${self.predecessor}).") 
 

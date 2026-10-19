@@ -14,7 +14,7 @@ Routes messages between peers of virtual networks, records all traffic to Postgr
 
 - **Relay:** send one protocol message (see `protocol.md`), the receiver's reply is returned.
   The receiver is looked up by `networkId` + `peerId`. Unknown/unreachable receivers get no reply.
-- **Register:** `{"action":"register","networkId":"n","peerId":"p","port":5000}`. The peer host
+- **Register:** `{"action":"register","network_id":"n","peer_id":"p","port":5000}`. The peer host
   is taken from the registration connection's sender IP; `"action":"unregister"` removes it.
   Reply: `{"status":"ok"}` or `{"status":"error","message":"..."}`. The lookup table is in memory only.
 - **REST:** `GET /health`, `/status`, `/peers?network_id=`, `/networks/{id}/peers`.
@@ -44,7 +44,7 @@ Or run the whole stack in Docker: `docker compose up --build proxy`.
 
 ```bash
 curl localhost:9001/status
-echo '{"networkId":"n","peerId":"a","port":5000}' | nc localhost 9002
+echo '{"network_id":"n","peer_id":"a","port":5000}' | nc localhost 9002
 curl localhost:9001/peers
 ```
 

@@ -8,3 +8,9 @@ Scaffold. REST API (`/api`) plus a WebSocket for live run updates.
 - OpenAPI schema at `/openapi.json`
 
 Run: `uv run testsuite` · Tests: `uv run pytest`
+
+## Copy Challenges to server
+Run the following command from the TestSuite folder
+```
+rsync -avz --delete Challenges vmadmin@dos-mobs-controller:~/DSM-TestSuite/TestSuite
+```

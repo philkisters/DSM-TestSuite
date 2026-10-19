@@ -7,12 +7,12 @@
         </UButton>
       </div>
       <div class="flex-1">
-        <h1 class="text-center text-4xl font-bold align-middle">{{ props.challenge.title }}</h1>
+        <h1 class="text-center text-4xl font-bold align-middle">{{ challenge.title }}</h1>
       </div>
       <div class="flex-1"/>
     </div>
     <p class="text-center text-2xl">
-      {{ props.challenge.description }}
+      {{ challenge.description }}
     </p>
     <USeparator class="my-4" />
     <div class="flex justify-center">
@@ -59,7 +59,7 @@ import { getChallengeResults } from '~~/app/services/backend/challenge.service'
 import { createRun } from '~~/app/services/backend/run.service'
 
 
-const props = defineProps<{
+const { challenge } = defineProps<{
   challenge: Challenge
 }>()
 
@@ -76,14 +76,22 @@ defineEmits<{
 }>()
 
 onMounted(async () => {
-  if (groupStore.activeGroup) {
-    challengeResults.value = await getChallengeResults(props.challenge.id, groupStore.activeGroup.id)
-  }
+  refreshChallengeResults()
 })
+
+watch(() => challenge, () => {
+  refreshChallengeResults()
+})
+
+async function refreshChallengeResults() {
+  if (groupStore.activeGroup) {
+    challengeResults.value = await getChallengeResults(challenge.id, groupStore.activeGroup.id)
+  }
+}
 
 function startRun() {
   if (!groupStore.activeGroup) return
-  createRun(groupStore.activeGroup.id, props.challenge.id)
+  createRun(groupStore.activeGroup.id, challenge.id)
     .then(run => {
       challengeResults.value!.runResults = [run, ...(challengeResults.value?.runResults ?? [])]
       activeRun.value = run
