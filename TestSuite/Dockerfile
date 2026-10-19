@@ -4,6 +4,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 ENV CHALLENGES_DIR=/app/TestSuite/Challenges PYTHONUNBUFFERED=1 UV_LINK_MODE=copy PATH="/app/TestSuite/.venv/bin:$PATH"
 WORKDIR /app/TestSuite
 COPY dsm-db /app/dsm-db
+COPY dsm-protocol /app/dsm-protocol
 COPY TestSuite/pyproject.toml TestSuite/uv.lock TestSuite/README.md ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY TestSuite/src ./src
