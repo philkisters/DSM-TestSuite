@@ -1,7 +1,7 @@
 <template>
-  <UModal :open="true" :dismissible="false" title="Select your Group" :close="false">
+  <UModal :open="true" :dismissible="false" title="Select your Group" :close="false" class="max-w-3xl">
     <template #body>
-      <div class="grid grid-cols-3 gap-4" v-if="!groupCreation">
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4" v-if="!groupCreation">
         <GroupSelectionItem v-for="group in groups" :key="group.id" :group="group" @click="selectGroup(group.id)" />
       </div>
       <div v-else>
@@ -13,14 +13,14 @@
         </UFormField>
       </div>
     </template>
-    <template #footer>
+    <template #footer v-if="enableGroupCreation" >
       <UButton
         size="lg"
         color="primary"
         variant="outline"
         icon="lucide-plus"
         @click="startGroupCreation"
-        v-if="false"
+        v-if="!groupCreation"
       >
         Create New Group
       </UButton>
@@ -51,8 +51,9 @@
 const groupStore = useGroupStore()
 
 const groups = computed(() => groupStore.groups)
-// disabled for now. Group creation is temporarily turned off.
 const groupCreation = ref(false)
+// Group creation is temporarily turned off.
+const enableGroupCreation = ref(false)
 
 const newGroup = ref({
   name: '',
@@ -72,7 +73,7 @@ function startGroupCreation() {
 }
 
 function createGroup() {
-  return
+  if (!enableGroupCreation.value || !newGroup.value.name || !newGroup.value.vmIp) return
   groupStore.createGroup(newGroup.value)
   groupCreation.value = false
 }
