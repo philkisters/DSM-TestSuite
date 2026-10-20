@@ -21,7 +21,7 @@
         <UColorModeButton />
     
         <UButton
-          to="https://git.informatik.uni-hamburg.de/dos/teaching/dsm-26"
+          to="https://gitlab.rrz.uni-hamburg.de/dos/teaching/dsm-26/"
           target="_blank"
           icon="i-simple-icons-gitlab"
           aria-label="DSM-GitLab"
