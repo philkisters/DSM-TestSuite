@@ -20,7 +20,7 @@
         variant="outline"
         icon="lucide-plus"
         @click="startGroupCreation"
-        v-if="!groupCreation"
+        v-if="false"
       >
         Create New Group
       </UButton>
@@ -51,6 +51,7 @@
 const groupStore = useGroupStore()
 
 const groups = computed(() => groupStore.groups)
+// disabled for now. Group creation is temporarily turned off.
 const groupCreation = ref(false)
 
 const newGroup = ref({
@@ -71,6 +72,7 @@ function startGroupCreation() {
 }
 
 function createGroup() {
+  return
   groupStore.createGroup(newGroup.value)
   groupCreation.value = false
 }
