@@ -23,6 +23,10 @@ export const useChallengeStore = defineStore('challenge', {
         this.initialized = true
       }
     },
-
+    getChallengeByKey(key: string): Challenge | null {
+      return this.challenges.find(challenge => challenge.key === key) ?? null
+    }
+  },
+  getters: {
   }
 })

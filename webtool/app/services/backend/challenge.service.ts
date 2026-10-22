@@ -4,6 +4,7 @@ import {
   type Challenge,
   type ChallengeResults
 } from '~~/shared/challenges'
+import { GroupChallengeStatsResultsApiSchema, type GroupChallengeStatsResults } from '~~/shared/challenges'
 
 export async function getChallengeResults(
   challengeId: number,
@@ -28,4 +29,12 @@ export async function startChallenge(
     method: 'POST'
   })
   if (!response.ok) throw new Error(`Failed to start challenge (${response.status})`)
+}
+
+export async function getGroupChallengeStats(
+  groupId: number
+): Promise<GroupChallengeStatsResults> {
+  const response = await fetch(`/testsuite/challenges/${groupId}/stats`)
+  if (!response.ok) throw new Error(`Failed to load group challenge stats (${response.status})`)
+  return GroupChallengeStatsResultsApiSchema.parse(await response.json())
 }

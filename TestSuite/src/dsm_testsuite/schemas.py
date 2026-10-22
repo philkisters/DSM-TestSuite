@@ -125,3 +125,16 @@ class RunAssertion(BaseModel):
     passed: bool
     message: str | None = None
     created_at: datetime
+    
+class GroupChallengeStats(BaseModel):
+    key: str
+    week: str
+    title: str
+    tries: int
+    successes: int
+    first_pass: datetime | None = None
+    last_fail: datetime | None = None
+    
+class GroupChallengeStatsResults(BaseModel):
+    group_id: int
+    stats: list[GroupChallengeStats] = Field(description="List of all group challenge stats")

@@ -78,4 +78,3 @@ export class GroupHealthStatus implements GroupHealthStatusModel {
     Object.assign(this, GroupHealthStatusApiSchema.parse(data))
   }
 }
-

@@ -1,13 +1,13 @@
 import logging
 
 from dsm_db import Challenge, Group, Run
-from sqlalchemy import select
+from sqlalchemy import case, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from ..scenario import discover_challenges
-from ..schemas import ChallengeResults, GroupChallengeResult
+from ..schemas import ChallengeResults, GroupChallengeResult, GroupChallengeStats, GroupChallengeStatsResults
 from ..schemas import Run as RunSchema
 
 logger = logging.getLogger(__name__)
@@ -83,3 +83,39 @@ def get_challenge_results_for_group(
         run_results.reverse()
     return ChallengeResults(group_results=group_results, run_results=run_results)
 
+
+def group_challenge_stats(engine: Engine, group_id: int) -> GroupChallengeStatsResults:
+    """Per challenge key: tries, successes, first_pass and last_fail for the given group.
+
+    Every challenge is included, even if the group never ran it.
+    """
+    ended = func.coalesce(Run.finished_at, Run.started_at)
+    with Session(engine) as session:
+        rows = session.execute(
+            select(
+                Challenge.key,
+                Challenge.title,
+                func.count(Run.id).label("tries"),
+                func.count(Run.id).filter(Run.status == "passed").label("successes"),
+                func.min(case((Run.status == "passed", ended))).label("first_pass"),
+                func.max(case((Run.status == "failed", ended))).label("last_fail"),
+            )
+            .select_from(Challenge)
+            .outerjoin(Run, (Run.challenge_id == Challenge.id) & (Run.group_id == group_id))
+            .group_by(Challenge.key, Challenge.title)
+        ).all()
+    return GroupChallengeStatsResults(
+        group_id=group_id,
+        stats=[
+            GroupChallengeStats(
+                key=r.key,
+                week=r.key.split('/')[0],
+                title=r.title,
+                tries=r.tries,
+                successes=r.successes,
+                first_pass=r.first_pass,
+                last_fail=r.last_fail,
+            )
+            for r in rows
+        ]
+    )
