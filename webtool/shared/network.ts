@@ -21,8 +21,8 @@ export const NetworkPeerEventApiSchema = z.object({
   ts: wireDate,
   networkId: z.string(),
   peerId: z.string(),
-  host: z.string().optional(),
-  port: z.number().optional(),
+  host: z.string().optional().nullable(),
+  port: z.number().optional().nullable(),
   peerData: z.record(z.string(), z.any()).optional(),
   message: z.string().optional()
 })

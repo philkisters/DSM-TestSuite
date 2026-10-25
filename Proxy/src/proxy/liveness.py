@@ -31,9 +31,11 @@ async def _ping(entry: PeerEntry, timeout: float, hub: Hub, recorder: Recorder) 
         msg = await asyncio.wait_for(reader.readline(), timeout)
         log.log(logging.INFO, "received message %s from %s/%s at %s:%d", msg.decode().strip(), entry.identity.network_id, entry.identity.peer_id, entry.host, entry.port)
         msg = Message.from_line(msg)
-        if (msg.code == Message.GET_NEIGHBORS_RESPONSE):
-            entry.successor = Identity.from_json(msg.data.successor) if hasattr(msg.data, "successor") else None
-            entry.predecessor = Identity.from_json(msg.data.predecessor) if hasattr(msg.data, "predecessor") else None
+        if (msg.code == MessageCode.GET_NEIGHBORS_RESPONSE):
+            log.log(logging.INFO, 'Received GET_NEIGHBORS_RESPONSE message')
+            entry.successor = Identity.from_json(msg.content.successor) if hasattr(msg.content, "successor") else None
+            entry.predecessor = Identity.from_json(msg.content.predecessor) if hasattr(msg.content, "predecessor") else None
+            log.log(logging.INFO, 'Publishing peer_updated event')
             _publish(hub, recorder, "peer_updated", entry.identity, entry.host, entry.port, peer_data={"successor": entry.successor, "predecessor": entry.predecessor})
         return msg.endswith(b"\n")
     except (OSError, asyncio.TimeoutError, ValueError):

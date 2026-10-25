@@ -3,13 +3,9 @@
     <USeparator class="my-2" />
     <div class="flex">
       <div class="flex-1 flex flex-col p-4">
-        <div class="flex flex-row justify-between">
-          <div class="flex-1">
-          </div>
-          <div class="flex-1 text-center text-lg">
+        <div class="flex flex-row justify-center">
+          <div class="flex-5 text-center text-lg">
             Active Run Events
-          </div>
-          <div class="flex-1 flex justify-end">
           </div>
         </div>
         <USeparator class="my-2" />
