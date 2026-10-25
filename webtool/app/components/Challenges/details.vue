@@ -53,10 +53,12 @@
   </div>
 </template>
 <script setup lang="ts">
-import type { Challenge, ChallengeResults } from '~~/shared/challenges'
-import type { Run } from '~~/shared/run'
 import { getChallengeResults } from '~~/app/services/backend/challenge.service'
 import { createRun } from '~~/app/services/backend/run.service'
+
+import type { Challenge, ChallengeResults } from '~~/shared/challenges'
+import type { Run } from '~~/shared/run'
+import { OrchestratorStatus } from '~~/shared/group'
 
 
 const { challenge } = defineProps<{
@@ -91,6 +93,12 @@ async function refreshChallengeResults() {
 
 function startRun() {
   if (!groupStore.activeGroup) return
+
+  if (groupStore.activeGroup.orchestratorStatus !== OrchestratorStatus.ONLINE) {
+    toast.add({ color: 'error', title: 'Orchestrator not online', description: 'Ensure that your orchestrator is reachable to start a challange' })
+    return
+  }
+
   createRun(groupStore.activeGroup.id, challenge.id)
     .then(run => {
       challengeResults.value!.runResults = [run, ...(challengeResults.value?.runResults ?? [])]
