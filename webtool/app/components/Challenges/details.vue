@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col text-center justify-start w-full p-4 ">
+  <div class="flex flex-col text-center justify-start w-full min-w-0">
     <div class="flex justify-between items-center">
       <div class="flex-1 flex justify-start">
         <UButton icon="lucide-arrow-left" @click="$emit('close')">

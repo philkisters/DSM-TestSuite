@@ -8,7 +8,7 @@ import asyncpg
 log = logging.getLogger("recorder")
 
 COLUMNS = ["ts", "network_id", "src_peer", "dst_peer", "code",
-           "size", "corr_id", "status", "delay_ms", "content"]
+           "size", "status", "delay_ms", "content"]
 REGISTRY_COLUMNS = ["ts", "network_id", "peer_id", "event", "host", "port", "peer_data", "message"]
 
 
@@ -26,16 +26,15 @@ class Recorder:
         self.registry_queue: asyncio.Queue = asyncio.Queue(max_queue)
         self._task: asyncio.Task | None = None
 
-    def record(self, *, network_id, src_peer=None, dst_peer=None, code=None, size=0,
-               corr_id=None, status, delay_ms=None, content=None) -> None:
+    def record(self, *, network_id, src_peer=None, dst_peer=None, code=None, size=0, status, delay_ms=None, content=None) -> None:
         row = (datetime.now(timezone.utc), network_id, src_peer, dst_peer, code,
-               size, corr_id, status, delay_ms,
+               size, status, delay_ms,
                json.dumps(content) if content is not None else None)
         if self.on_event:
             self.on_event(network_id, {
                 "type": "message", "ts": row[0].isoformat(), "networkId": network_id,
                 "src": src_peer, "dst": dst_peer, "code": code, "size": size,
-                "corrId": corr_id, "status": status, "delayMs": delay_ms, "content": content})
+                "status": status, "delayMs": delay_ms, "content": content})
         try:
             self.queue.put_nowait(row)
         except asyncio.QueueFull:

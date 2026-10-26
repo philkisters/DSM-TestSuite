@@ -28,22 +28,27 @@ async def _ping(entry: PeerEntry, timeout: float, hub: Hub, recorder: Recorder) 
             asyncio.open_connection(entry.host, entry.port, limit=MAX_LINE_BYTES), timeout)
         writer.write(msg.to_line())
         await writer.drain()
-        msg = await asyncio.wait_for(reader.readline(), timeout)
-        log.log(logging.INFO, "received message %s from %s/%s at %s:%d", msg.decode().strip(), entry.identity.network_id, entry.identity.peer_id, entry.host, entry.port)
-        msg = Message.from_line(msg)
-        if (msg.code == MessageCode.GET_NEIGHBORS_RESPONSE):
-            log.log(logging.INFO, 'Received GET_NEIGHBORS_RESPONSE message')
-            entry.successor = Identity.from_json(msg.content.successor) if hasattr(msg.content, "successor") else None
-            entry.predecessor = Identity.from_json(msg.content.predecessor) if hasattr(msg.content, "predecessor") else None
-            log.log(logging.INFO, 'Publishing peer_updated event')
-            _publish(hub, recorder, "peer_updated", entry.identity, entry.host, entry.port, peer_data={"successor": entry.successor, "predecessor": entry.predecessor})
-        return msg.endswith(b"\n")
+        line = await asyncio.wait_for(reader.readline(), timeout)
+        if not line.endswith(b"\n"):
+            return False
+        reply = Message.from_line(line)
+        if reply.code == MessageCode.GET_NEIGHBORS_RESPONSE:
+            succ = reply.content.get("successor") or None
+            pred = reply.content.get("predecessor") or None
+            entry.successor = Identity.from_json(succ) if succ else None
+            entry.predecessor = Identity.from_json(pred) if pred else None
+            _publish(hub, recorder, "peer_updated", entry.identity, entry.host, entry.port,
+                     peer_data={"successor": succ, "predecessor": pred})
+        return True
     except (OSError, asyncio.TimeoutError, ValueError):
         return False
     finally:
         if writer is not None:
             writer.close()
-            await writer.wait_closed()
+            try:
+                await writer.wait_closed()
+            except OSError:
+                pass
 
 
 async def _check(registry: Registry, hub: Hub, recorder: Recorder, entry: PeerEntry, retries: int, timeout: float) -> None:
@@ -68,4 +73,9 @@ async def liveness_loop(registry: Registry, hub: Hub, recorder: Recorder) -> Non
         log.info("starting to check liveness for %d peers", len(entries))
 
         if entries:
-            await asyncio.gather(*(_check(registry, hub, recorder, e, retries, timeout) for e in entries))
+            results = await asyncio.gather(
+                *(_check(registry, hub, recorder, e, retries, timeout) for e in entries),
+                return_exceptions=True)
+            for r in results:
+                if isinstance(r, Exception):
+                    log.error("liveness check failed", exc_info=r)

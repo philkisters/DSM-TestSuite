@@ -38,10 +38,9 @@ export const NetworkPeerMessageEventApiSchema = z.object({
   dst: z.string(),
   code: z.number(),
   size: z.number(),
-  corrId: z.string(),
   status: z.string(),
-  delayMs: z.number(),
-  content: z.string().optional()
+  delayMs: z.number().nullable(),
+  content: z.object({}).optional().nullable()
 })
 
 export type NetworkPeerMessageEventInput = z.input<typeof NetworkPeerMessageEventApiSchema>

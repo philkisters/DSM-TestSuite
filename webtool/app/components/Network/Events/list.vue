@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col space-y-2">
+  <div class="flex flex-col space-y-2 overflow-y-auto min-h-0 h-full min-w-0">
     <NetworkEvents v-for="(event, index) in props.events" :key="index" :event="event" />
   </div>
 </template>

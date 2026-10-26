@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-grow">
+  <div class="flex min-w-0 flex-grow">
     <div class="flex flex-col border-r-muted border-r-1 min-w-48">
       <PanelButton v-for="challenge in challenges" :key="challenge.id" :class="{ 'bg-primary/30': selectedChallenge?.id === challenge.id }">
         <div class="flex flex-col" @click="setSelectedChallenge(challenge)">
@@ -12,7 +12,7 @@
         </div>
       </PanelButton>
     </div>
-    <div class="flex h-full flex-grow justify-center p-4">
+    <div class="flex h-full min-w-0 flex-grow justify-center overflow-x-hidden p-4">
       <ChallengesDefault v-if="!selectedChallenge" @select="setChallenge" />
       <ChallengesDetails v-else :challenge="selectedChallenge" @close="setSelectedChallenge(null)" />
     </div>
