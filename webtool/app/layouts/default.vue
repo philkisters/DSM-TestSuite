@@ -59,6 +59,14 @@
             Networks
           </PanelButton>
         </NuxtLink>
+        <NuxtLink
+          active-class="bg-secondary/30"
+          to="/utils"
+        >
+          <PanelButton>
+            Utilities
+          </PanelButton>
+        </NuxtLink>
       </div>
       <slot />
     </div>

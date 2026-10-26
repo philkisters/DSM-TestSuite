@@ -91,5 +91,5 @@ class Neighbors(_PeerStep):
             raise AssertionFailed(f"The 'predecessor' and 'successor' should never be None/Undefined.")
         
         if (response_message.content["successor"]["peer_id"] != self.successor or response_message.content["predecessor"]["peer_id"] != self.predecessor):
-            raise AssertionFailed(f"The response returned unexpected neighbors: successor ${response_message.content['successor']['peer_id']} (should be ${self.successor}); predecessor ${response_message.content['predecessor']['peer_id']} (should be ${self.predecessor}).") 
+            raise AssertionFailed(f"The response returned unexpected neighbors for peer {self.peer_name}: successor ${response_message.content['successor']['peer_id']} (should be ${self.successor}); predecessor ${response_message.content['predecessor']['peer_id']} (should be ${self.predecessor}).") 
 

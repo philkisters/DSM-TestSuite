@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col max-h-96">
+  <div class="flex flex-col max-h-[50vh]">
     <USeparator class="my-2" />
     <div class="flex flex-row justify-between">
       <div class="flex-1">
