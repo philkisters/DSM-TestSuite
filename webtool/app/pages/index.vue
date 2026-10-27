@@ -8,7 +8,7 @@
           Group Uptime
         </h3>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <GroupHealthUptime v-for="group in groups" :key="group.id" :groupId="group.id" />
+          <GroupHealthUptime v-for="group in groups" :key="group.id" :groupId="group.id" :groupName="group.name" />
         </div>
       </div>
       <div v-else>
