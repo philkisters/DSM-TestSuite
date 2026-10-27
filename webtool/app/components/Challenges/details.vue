@@ -36,10 +36,10 @@
         </div>
         <USeparator class="my-2" />
         <ChallengesGroupStatus
-          v-for="groupId of challengeResults.groupResults.keys()"
+          v-for="[groupId, result] of sortedGroupResults"
           :key="groupId"
           :group-name="groupName(groupId)"
-          :group-status="challengeResults.groupResults.get(groupId)!"
+          :group-status="result"
         />
       </div>
     </div>
@@ -72,6 +72,23 @@ const challengeResults = ref<ChallengeResults | null>(null)
 const activeRun = ref<Run | null>(null)
 
 const groupName = computed(() => (groupId: number) => groupStore.groups.find(group => group.id === groupId)?.name ?? 'Unknown')
+
+// Passed groups first (earliest pass on top), then the rest by most recent try
+const sortedGroupResults = computed(() => {
+  const entries = [...(challengeResults.value?.groupResults.entries() ?? [])]
+  const time = (t?: Date) => t?.getTime()
+  return entries.sort(([, a], [, b]) => {
+    const aPassed = a.status === 'passed'
+    const bPassed = b.status === 'passed'
+    if (aPassed !== bPassed) return aPassed ? -1 : 1
+    const ta = time(a.timestamp)
+    const tb = time(b.timestamp)
+    if (ta === tb) return 0
+    if (ta === undefined) return 1
+    if (tb === undefined) return -1
+    return aPassed ? ta - tb : tb - ta
+  })
+})
 
 defineEmits<{
   (e: 'close'): void
