@@ -35,6 +35,16 @@ class GroupHealthStatus(BaseModel):
     timestamp: datetime
 
 
+class GroupUptime(BaseModel):
+    group_id: int
+    since: datetime | None
+    as_of: datetime
+    uptime_seconds: float
+    downtime_seconds: float
+    uptime_percentage: float | None
+    downtime_percentage: float | None
+
+
 class GroupHealthEvent(BaseModel):
     """Pushed over the health websocket whenever a group's state changes."""
 

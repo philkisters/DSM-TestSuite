@@ -1,4 +1,11 @@
-import { GroupHealthStatusApiSchema, GroupHealthEventApiSchema, type GroupHealthEvent, type GroupHealthStatus } from "~~/shared/group"
+import {
+  GroupHealthStatusApiSchema,
+  GroupHealthEventApiSchema,
+  GroupUptimeApiSchema,
+  type GroupHealthEvent,
+  type GroupHealthStatus,
+  type GroupUptime
+} from '~~/shared/group'
 
 export async function fetchGroupHealthStatus(): Promise<GroupHealthStatus[]> {
     const response = await fetch('/testsuite/groups/health')
@@ -6,6 +13,11 @@ export async function fetchGroupHealthStatus(): Promise<GroupHealthStatus[]> {
     return GroupHealthStatusApiSchema.array().parse(data) as GroupHealthStatus[]
 }
 
+export async function fetchGroupUptime(groupId: number): Promise<GroupUptime> {
+  const response = await fetch(`/testsuite/groups/${groupId}/uptime`)
+  if (!response.ok) throw new Error(`Failed to load group uptime (${response.status})`)
+  return GroupUptimeApiSchema.parse(await response.json())
+}
 
 export function subscribeToGroupHealth(
     onUpdate: (status: GroupHealthEvent) => void

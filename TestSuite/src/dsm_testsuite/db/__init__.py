@@ -2,7 +2,13 @@ from .assertions import get_assertions_for_run, save_assertion
 from .challenges import get_challenge_results_for_group, list_challenges, sync_challenges, group_challenge_stats
 from .engine import Engine, make_engine
 from .groups import GroupExists, create_group, delete_group, list_groups
-from .health import list_group_health, list_group_health_history, save_group_health
+from .health import (
+    calculate_group_uptime,
+    list_group_health,
+    list_group_health_history,
+    list_group_uptime,
+    save_group_health,
+)
 from .runs import (
     StaleRun,
     fail_stale_runs,
@@ -21,6 +27,7 @@ __all__ = [
     "GroupExists",
     "StaleRun",
     "create_group",
+    "calculate_group_uptime",
     "delete_group",
     "fail_stale_runs",
     "find_run_targets",
@@ -32,6 +39,7 @@ __all__ = [
     "list_challenges",
     "list_group_health",
     "list_group_health_history",
+    "list_group_uptime",
     "list_groups",
     "list_runs",
     "list_runs_for_challenge",

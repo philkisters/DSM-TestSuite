@@ -2,8 +2,16 @@ from fastapi import APIRouter, Request, HTTPException, WebSocket, WebSocketDisco
 from datetime import datetime, timezone, timedelta
 
 from .helper import get_engine
-from ..db import GroupExists, create_group, list_group_health, list_group_health_history, list_groups, delete_group
-from ..schemas import Group, GroupCreate, GroupHealthStatus
+from ..db import (
+    GroupExists,
+    create_group,
+    delete_group,
+    list_group_health,
+    list_group_health_history,
+    list_group_uptime,
+    list_groups,
+)
+from ..schemas import Group, GroupCreate, GroupHealthStatus, GroupUptime
 
 router = APIRouter(prefix="/groups", tags=["groups"])
 
@@ -47,3 +55,21 @@ def delete_group_by_id(group_id: int, request: Request):
 @router.get("/{group_id}/health", response_model=list[GroupHealthStatus])
 def get_group_health(group_id: int, request: Request):
     return list_group_health_history(get_engine(request), group_id, since=datetime.now(timezone.utc) - timedelta(days=1))
+
+
+@router.get("/{group_id}/uptime", response_model=GroupUptime)
+def get_group_uptime(group_id: int, request: Request):
+    as_of = datetime.now(timezone.utc)
+    since, uptime_seconds, downtime_seconds = list_group_uptime(
+        get_engine(request), group_id, as_of
+    )
+    total_seconds = uptime_seconds + downtime_seconds
+    return GroupUptime(
+        group_id=group_id,
+        since=since,
+        as_of=as_of,
+        uptime_seconds=uptime_seconds,
+        downtime_seconds=downtime_seconds,
+        uptime_percentage=uptime_seconds / total_seconds * 100 if total_seconds else None,
+        downtime_percentage=downtime_seconds / total_seconds * 100 if total_seconds else None,
+    )

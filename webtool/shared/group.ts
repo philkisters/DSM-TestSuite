@@ -48,6 +48,26 @@ export type GroupHealthEvent = z.infer<typeof GroupHealthEventApiSchema>
 export type GroupHealthStatusModel = z.infer<typeof GroupHealthStatusApiSchema>
 export type GroupHealthStatusInput = z.input<typeof GroupHealthStatusApiSchema>
 
+export const GroupUptimeApiSchema = z.object({
+  group_id: z.number(),
+  since: wireDate.nullable(),
+  as_of: wireDate,
+  uptime_seconds: z.number(),
+  downtime_seconds: z.number(),
+  uptime_percentage: z.number().nullable(),
+  downtime_percentage: z.number().nullable()
+}).strict().transform(uptime => ({
+  groupId: uptime.group_id,
+  since: uptime.since,
+  asOf: uptime.as_of,
+  uptimeSeconds: uptime.uptime_seconds,
+  downtimeSeconds: uptime.downtime_seconds,
+  uptimePercentage: uptime.uptime_percentage,
+  downtimePercentage: uptime.downtime_percentage
+}))
+
+export type GroupUptime = z.infer<typeof GroupUptimeApiSchema>
+
 export enum OrchestratorStatus {
   ONLINE = 'ONLINE',
   NOT_RESPONDING = 'NOT_RESPONDING',
