@@ -1,5 +1,4 @@
-import { sha256 } from '@noble/hashes/sha2.js'
-import { bytesToHex } from '@noble/hashes/utils.js'
+import { shortHash } from '~/composables/useHash'
 import type { NetworkEvent } from '~~/shared/network'
 
 export interface TopologyPeer {
@@ -7,13 +6,6 @@ export interface TopologyPeer {
   hash: string
   predecessor: string | null
   successor: string | null
-}
-
-const HASH_LENGTH = 8
-
-// Matches dsm_protocol.hash_id (SHA-256 of the UTF-8 id), shortened for display.
-export function shortHash(peerId: string): string {
-  return bytesToHex(sha256(new TextEncoder().encode(peerId))).slice(0, HASH_LENGTH)
 }
 
 // Neighbors may arrive as a plain id or as an identity object.

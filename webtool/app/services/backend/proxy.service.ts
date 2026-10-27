@@ -1,6 +1,6 @@
 import { type NetworkEvent, NetworkEventApiSchema, type NetworkStat, NetworkStatApiSchema } from '~~/shared/network'
 
-export async function getNetworks(): Promise<NetworkStat[]> {
+export async function   getNetworks(): Promise<NetworkStat[]> {
   const response = await fetch('/proxy/networks')
   const data = await response.json()
   return NetworkStatApiSchema.parse(data) as NetworkStat[]

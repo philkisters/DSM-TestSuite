@@ -19,13 +19,10 @@
   </div>
 </template>
 <script setup lang="ts">
-import { sha256 } from '@noble/hashes/sha2.js'
-import { bytesToHex } from '@noble/hashes/utils.js'
+const { hashId, SHORT_HASH_LENGTH } = useHash()
 
 const id = ref('')
 
-const hash = computed(() => {
-  return bytesToHex(sha256(new TextEncoder().encode(id.value)))
-})
+const hash = computed(() => hashId(id.value))
 
 </script>

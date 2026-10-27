@@ -7,7 +7,8 @@
 
 <script setup lang="ts">
 import type { Core, ElementDefinition } from 'cytoscape'
-import { shortHash, type TopologyPeer } from '~/composables/useNetworkTopology'
+import { shortHash } from '~/composables/useHash'
+import type { TopologyPeer } from '~/composables/useNetworkTopology'
 
 const props = withDefaults(defineProps<{
   peers: TopologyPeer[]

@@ -19,7 +19,7 @@
         <div class="flex-1">
         </div>
         <div class="flex-5 text-center text-lg">
-          Message Logs
+          Message Logs ({{ networkEvents.length }})
         </div>
         <div class="flex-1 flex justify-end">
           <UButton icon="lucide-x" variant="ghost" color="neutral" @click="$emit('close')" />
