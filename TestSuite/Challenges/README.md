@@ -43,6 +43,12 @@ Actions are active steps that are executed by the TestSuite over the Orchestrato
 Requires a `peer-name` to start a peer on the orchestrator of the currently logged in group. 
 This should start a peer with that name and also that peer should register to the registry provided by the `Proxy`.  
 
+#### Setup Network
+Requires `peer-names` (list) and optionally `timeout` (seconds, default 5). Starts and joins each peer sequentially: the first joins without a bootstrap peer, every following one bootstraps via the previous peer. Waits `timeout` seconds between joins.
+
+#### Destroy Network
+Takes no parameters. Sends a kill command to every peer started during the run. Peers are also killed automatically when a run ends, so this is only needed to tear down mid-challenge.
+
 #### Stop Peer
 Requires a `peer-name`. This stops an already existing peer via the orchestrator. After before stopping it should undregister from the `Proxy`, but doesn't `leave` the P2P network (See `leave-peer`) 
 

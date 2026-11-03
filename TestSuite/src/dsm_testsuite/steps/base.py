@@ -5,6 +5,7 @@ from typing import Any, ClassVar, Literal
 from pydantic import BaseModel, ConfigDict
 
 from ..clients import OrchestratorClient, ProxyClient
+from ..model import ChordModel
 
 
 class StepError(Exception):
@@ -22,6 +23,8 @@ class StepContext:
     proxy: ProxyClient
     # Peers started by this run and not yet stopped; killed on cleanup.
     started_peers: set[str] = field(default_factory=set)
+    # Ring the network is expected to have, updated by the join/leave/stop actions.
+    model: ChordModel = field(default_factory=ChordModel)
 
 
 class Step(BaseModel):

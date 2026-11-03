@@ -96,3 +96,19 @@ class ProxyClient:
         )
         
         return await self._send_message(message)
+    
+    async def send_get_finger_message(self, peer_name: str) -> Message:
+        message = Message(
+            sender=Identity(
+                network_id=self.network_id,
+                peer_id='TestSuite',
+            ),
+            receiver=Identity(
+                network_id=self.network_id,
+                peer_id=peer_name,
+            ),
+            code=MessageCode.GET_FINGERS_REQUEST,
+            content={}
+        )
+        
+        return await self._send_message(message)
