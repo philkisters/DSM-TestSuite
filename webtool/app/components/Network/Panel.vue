@@ -42,15 +42,17 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-const networkEvents = ref<NetworkEvent[]>([])
-const { peers, push } = useNetworkTopology()
+const settings = useSettingsStore()
+const networkEvents = shallowRef<NetworkEvent[]>([])
+const { peers, pushAll } = useNetworkTopology()
 const unsubscribeEvents = ref<(() => void) | null>(null)
 
 
 onMounted(() => {
-  unsubscribeEvents.value = subscribeToNetworkEvents(props.networkId, (event: NetworkEvent) => {
-    networkEvents.value.push(event)
-    push(event)
+  unsubscribeEvents.value = subscribeToNetworkEvents(props.networkId, (events: NetworkEvent[]) => {
+    // A new array per batch, so the list's props change and it re-renders.
+    networkEvents.value = [...networkEvents.value, ...events].slice(-settings.maxNetworkEvents)
+    pushAll(events)
   })
 })
 

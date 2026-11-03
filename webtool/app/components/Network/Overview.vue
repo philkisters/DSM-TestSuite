@@ -109,9 +109,10 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ empty: [] }>()
 
-const networkEvents = ref<NetworkEvent[]>([])
+const settings = useSettingsStore()
+const networkEvents = shallowRef<NetworkEvent[]>([])
 const selectedPeer = ref<string | null>(null)
-const { peers, push } = useNetworkTopology()
+const { peers, pushAll } = useNetworkTopology()
 const selectedPeerInfo = computed(() => peers.value.find(p => p.peerId === selectedPeer.value) ?? null)
 const visibleEvents = computed(() => {
   const peer = selectedPeer.value
@@ -160,9 +161,10 @@ let unsubscribe: (() => void) | null = null
 
 function subscribe(networkId: string) {
   unsubscribe?.()
-  unsubscribe = subscribeToNetworkEvents(networkId, (event: NetworkEvent) => {
-    networkEvents.value.push(event)
-    push(event)
+  unsubscribe = subscribeToNetworkEvents(networkId, (events: NetworkEvent[]) => {
+    // A new array per batch, so the list's props change and it re-renders.
+    networkEvents.value = [...networkEvents.value, ...events].slice(-settings.maxNetworkEvents)
+    pushAll(events)
   })
 }
 

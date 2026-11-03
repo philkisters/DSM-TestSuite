@@ -38,9 +38,11 @@ export const useGroupStore = defineStore('group', {
     },
     setActiveGroup(groupId: number) {
       this.activeGroup = this.groups.find(g => g.id === groupId) || null
+      useSettingsStore().activeGroupId = this.activeGroup?.id ?? null
     },
     removeActiveGroup() {
       this.activeGroup = null
+      useSettingsStore().activeGroupId = null
     },
     async fetchGroups() {
       this.isLoading = true
@@ -54,6 +56,9 @@ export const useGroupStore = defineStore('group', {
             group.orchestratorStatus = status.state
           }
         }
+
+        const savedGroupId = useSettingsStore().activeGroupId
+        if (!this.activeGroup && savedGroupId !== null) this.setActiveGroup(savedGroupId)
       } catch (error) {
         useToast().add({ title: 'Error', description: 'Failed to fetch groups', color: 'error' })
         console.error('Failed to fetch groups:', error)

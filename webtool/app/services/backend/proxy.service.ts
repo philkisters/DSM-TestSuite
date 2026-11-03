@@ -8,11 +8,23 @@ export async function   getNetworks(): Promise<NetworkStat[]> {
 
 export function subscribeToNetworkEvents(
   networkId: string,
-  onUpdate: (event: NetworkEvent) => void
+  onUpdate: (events: NetworkEvent[]) => void
 ): () => void {
   let ws: WebSocket | null = null
   let retryTimer: ReturnType<typeof setTimeout> | null = null
+  const settings = useSettingsStore()
   let closed = false
+  let buffer: NetworkEvent[] = []
+  let flushTimer: ReturnType<typeof setTimeout> | null = null
+
+  // Events are delivered in batches so consumers update once per interval, not once per message.
+  const flush = () => {
+    flushTimer = null
+    if (!buffer.length) return
+    const batch = buffer
+    buffer = []
+    onUpdate(batch)
+  }
 
   const connect = () => {
     const protocol = location.protocol === 'https:' ? 'wss' : 'ws'
@@ -23,7 +35,10 @@ export function subscribeToNetworkEvents(
     ws = new WebSocket(url)
     ws.onmessage = (event) => {
       const parsed = NetworkEventApiSchema.safeParse(JSON.parse(event.data))
-      if (parsed.success) onUpdate(parsed.data)
+      if (parsed.success) {
+        buffer.push(parsed.data)
+        flushTimer ??= setTimeout(flush, settings.eventBatchIntervalMs)
+      }
       else console.error('Invalid network event', parsed.error)
     }
     ws.onclose = () => {
@@ -37,6 +52,8 @@ export function subscribeToNetworkEvents(
   return () => {
     closed = true
     if (retryTimer) clearTimeout(retryTimer)
+    if (flushTimer) clearTimeout(flushTimer)
+    buffer = []
     ws?.close()
   }
 }

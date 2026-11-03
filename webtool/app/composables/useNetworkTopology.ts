@@ -58,10 +58,16 @@ export function useNetworkTopology() {
   const state = new Map<string, TopologyPeer>()
   const peers = shallowRef<TopologyPeer[]>([])
 
-  function push(event: NetworkEvent) {
-    if (applyNetworkEvent(state, event)) {
-      peers.value = Array.from(state.values(), p => ({ ...p }))
+  function pushAll(events: NetworkEvent[]) {
+    let changed = false
+    for (const event of events) {
+      if (applyNetworkEvent(state, event)) changed = true
     }
+    if (changed) peers.value = Array.from(state.values(), p => ({ ...p }))
+  }
+
+  function push(event: NetworkEvent) {
+    pushAll([event])
   }
 
   function reset() {
@@ -69,5 +75,5 @@ export function useNetworkTopology() {
     peers.value = []
   }
 
-  return { peers, push, reset }
+  return { peers, push, pushAll, reset }
 }
