@@ -7,7 +7,7 @@
 
 <script setup lang="ts">
 import type { Core, ElementDefinition } from 'cytoscape'
-import { shortHash } from '~/composables/useHash'
+import { shortHash, hashId } from '~/composables/useHash'
 import type { TopologyPeer } from '~/composables/useNetworkTopology'
 
 const props = withDefaults(defineProps<{
@@ -27,13 +27,13 @@ function buildElements(peers: TopologyPeer[]): ElementDefinition[] {
   const nodes = new Map<string, ElementDefinition>()
   const edges = new Map<string, ElementDefinition>()
 
-  const addNode = (peerId: string, known: boolean, hash?: string) => {
-    const label = `${peerId}\n${hash ?? shortHash(peerId)}`
+  const addNode = (peerId: string, known: boolean) => {
+    const label = `${peerId}\n${shortHash(peerId)}`
     const existing = nodes.get(peerId)
     if (existing && !known) return
     nodes.set(peerId, {
       group: 'nodes',
-      data: { id: peerId, label, hash: hash ?? shortHash(peerId) },
+      data: { id: peerId, label, hash: hashId(peerId) },
       classes: known ? '' : 'unknown'
     })
   }
@@ -46,7 +46,7 @@ function buildElements(peers: TopologyPeer[]): ElementDefinition[] {
     })
   }
 
-  for (const p of peers) addNode(p.peerId, true, p.hash)
+  for (const p of peers) addNode(p.peerId, true)
   for (const p of peers) {
     if (p.successor) {
       addNode(p.successor, false)
@@ -60,15 +60,26 @@ function buildElements(peers: TopologyPeer[]): ElementDefinition[] {
   return [...nodes.values(), ...edges.values()]
 }
 
-const layoutOptions = {
-  name: 'circle',
-  animate: true,
-  animationDuration: 300,
-  fit: true,
-  padding: 40,
-  // Order around the ring by hash, like the DHT ring.
-  sort: (a: { data: (k: string) => string }, b: { data: (k: string) => string }) =>
-    a.data('hash').localeCompare(b.data('hash'))
+// ordered by hash (hex: 0-9 < a-f).
+function ringLayout() {
+  const sorted = cy!.nodes().toArray().sort((a, b) => {
+    const x = a.data('hash') as string
+    const y = b.data('hash') as string
+    return x < y ? -1 : x > y ? 1 : 0
+  })
+  const index = new Map(sorted.map((n, i) => [n.id(), i]))
+  const radius = Math.max(120, sorted.length * 40)
+  return {
+    name: 'preset',
+    animate: true,
+    animationDuration: 300,
+    fit: true,
+    padding: 40,
+    positions: (n: { id: () => string }) => {
+      const theta = -Math.PI / 2 + 2 * Math.PI * (index.get(n.id()) ?? 0) / sorted.length
+      return { x: radius * Math.cos(theta), y: radius * Math.sin(theta) }
+    }
+  }
 }
 
 // Diff against the current graph so existing nodes keep their state and animate.
@@ -95,7 +106,7 @@ function sync(peers: TopologyPeer[]) {
     }
   })
 
-  if (changed) cy.layout(layoutOptions).run()
+  if (changed) cy.layout(ringLayout()).run()
 }
 
 function applyHighlight() {
@@ -111,7 +122,6 @@ onMounted(async () => {
   cy = cytoscape({
     container: container.value,
     elements: buildElements(props.peers),
-    layout: layoutOptions,
     minZoom: 0.3,
     maxZoom: 3,
     style: [
@@ -141,24 +151,8 @@ onMounted(async () => {
           'line-color': '#9ca3af',
           'target-arrow-color': '#9ca3af',
           'target-arrow-shape': 'triangle',
-          'curve-style': 'unbundled-bezier',
-          'control-point-weights': 0.5
-        }
-      },
-      {
-        selector: 'edge.successor',
-        style: {
-          'control-point-distances': 24,
-          'loop-direction': '0deg',
-          'loop-sweep': '45deg'
-        }
-      },
-      {
-        selector: 'edge.predecessor',
-        style: {
-          'control-point-distances': -24,
-          'loop-direction': '180deg',
-          'loop-sweep': '45deg'
+          'curve-style': 'bezier',
+          'control-point-step-size': 40
         }
       }
     ]
@@ -168,6 +162,7 @@ onMounted(async () => {
   cy.on('tap', (evt) => {
     if (evt.target === cy) emit('select', null)
   })
+  cy.layout(ringLayout()).run()
   applyHighlight()
 })
 
