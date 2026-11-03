@@ -7,6 +7,7 @@
       icon="lucide-plus"
       label="Join"
       variant="soft"
+      @click="openModal()"
     />
     <template #content>
       <UCard>
@@ -83,6 +84,12 @@ const bootstrapItems = computed(() => [
   ...props.peers.map(p => ({ label: p.peerId, value: p.peerId }))
 ])
 
+function getRandomBootstrap() {
+  if (bootstrapItems.value.length === 0) return NONE
+  const randomIndex = Math.floor(Math.random() * (bootstrapItems.value.length - 1)) + 1 // pick one at random but not NONE
+  return bootstrapItems.value[randomIndex]!.value
+}
+
 async function submit() {
   loading.value = true
   try {
@@ -106,4 +113,9 @@ async function submit() {
     loading.value = false
   }
 }
+function openModal() {
+  bootstrapPeerId.value = getRandomBootstrap()
+  open.value = true
+}
+
 </script>
