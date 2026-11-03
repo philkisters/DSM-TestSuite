@@ -68,7 +68,7 @@ function ringLayout() {
     return x < y ? -1 : x > y ? 1 : 0
   })
   const index = new Map(sorted.map((n, i) => [n.id(), i]))
-  const radius = Math.max(120, sorted.length * 40)
+  const radius = Math.max(120, sorted.length * 20)
   return {
     name: 'preset',
     animate: true,
