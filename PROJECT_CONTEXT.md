@@ -169,86 +169,56 @@ A peer should not need to know the physical address of another peer.
 
 The TestSuite is the central test and challenge execution system.
 
-It defines and executes distributed-system scenarios against a student group.
+Challenges are YAML files with metadata and an ordered `steps` list. Each step
+is an action or an assertion, and any parameters for that step are declared
+alongside it. The TestSuite executes the steps in order against the selected
+student group; waits, setup, checks, and cleanup are all represented as steps.
 
-A scenario consists conceptually of:
-```text
-  Initial State
-        +
-  Actions
-        +
-  Network Conditions
-        +
-  Assertions
-        +
-  Metrics
+For example, the first-peer challenge starts a peer, checks that it registers
+and stays registered, stops it, and then checks that it is no longer registered:
+
+```yaml
+name: first-peer
+description: Start a peer. This should register at the Proxy over port `9001`. Wait for 10 seconds, check if peer is still alive and registered. Then stop peer.
+archived: false
+
+steps:
+  - action: start-peer
+    peer-name: first-peer
+  - action: wait
+    duration: 1
+  - assert: peer-registered
+    peer-name: first-peer
+  - assert: peers-registered
+    number: 1
+  - action: wait
+    duration: 10
+  - assert: peer-registered
+    peer-name: first-peer
+  - assert: peers-registered
+    number: 1
+  - action: stop-peer
+    peer-name: first-peer
+  - action: wait
+    duration: 1
+  - assert: peer-not-registered
+    peer-name: first-peer
+  - assert: peers-registered
+    number: 0
 ```
 
-Example:
-```text
-  scenario: replication-failure
-
-  initial:
-    peers: 5
-    replication_factor: 3
-
-  actions:
-    - put:
-        key: image42
-    - kill:
-        peer: 3
-    - get:
-        key: image42
-
-  assertions:
-    - value_available: true
-    - replicas_remaining: ">= 2"
-```
+The top-level fields are `name`, `description`, `archived`, and `steps`.
+Actions such as `start-peer`, `wait`, and `stop-peer` change or wait on the
+system. Assertions such as `peer-registered`, `peer-not-registered`, and
+`peers-registered` check its observable state. Action and assertion parameters,
+such as `peer-name`, `duration`, and `number`, are written directly on their
+step.
 
 The TestSuite can interact with:
 
 - The student Orchestrator
 - The Proxy
 - The result database
-
-The TestSuite should support several levels of testing:
-
-1. State / Black-box behaviour
-
-Examples:
-
-- GET returns the correct value
-- Data remains available after node failure
-- Chord lookup returns the correct node
-- Replicas converge
-
-2. Protocol / Message behaviour
-
-Examples:
-
-- Required messages were sent
-- A retry occurred after a timeout
-- A lookup used the expected routing behaviour
-- Replication messages reached the required peers
-- RAFT election/vote/append messages occurred
-
-Tests should generally validate observable system properties, not force a particular internal implementation unless explicitly required by the exercise.
-
-3. Performance / Metrics
-
-Examples:
-
-- Lookup latency
-- Number of messages
-- Number of hops
-- Recovery time
-- Convergence time
-- Throughput
-- Number of retries
-
-Correctness is more important than performance.
-
-Performance challenges may optionally be used for benchmarks or leaderboards.
 
 -------------------------
 
