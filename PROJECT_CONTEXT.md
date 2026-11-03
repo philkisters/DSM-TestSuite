@@ -302,8 +302,6 @@ Orchestrator
     +-- join
     +-- leave
     +-- kill
-    +-- get
-    +-- put
     |
     v
 Local Peer Processes
