@@ -1,45 +1,33 @@
-from collections.abc import Sequence
 from datetime import datetime, timezone
 
 from dsm_db import GroupHealth
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
+
+# The health service probes every group once per interval.
+SAMPLE_INTERVAL_SECONDS = 5.0
+
+
+def calculate_group_uptime(
+    online_samples: int,
+    offline_samples: int,
+    first_sample: datetime | None,
+) -> tuple[datetime | None, float, float]:
+    """Return first sample time and uptime/downtime seconds from sample counts."""
+    if first_sample is None:
+        return None, 0.0, 0.0
+    return (
+        _as_utc(first_sample),
+        online_samples * SAMPLE_INTERVAL_SECONDS,
+        offline_samples * SAMPLE_INTERVAL_SECONDS,
+    )
 
 
 def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
-
-
-def calculate_group_uptime(
-    rows: Sequence[GroupHealth], as_of: datetime
-) -> tuple[datetime | None, float, float]:
-    """Return the first sample time and time-weighted uptime/downtime in seconds."""
-    as_of = _as_utc(as_of)
-    ordered = sorted(rows, key=lambda row: (_as_utc(row.timestamp), row.id))
-    relevant = [row for row in ordered if _as_utc(row.timestamp) < as_of]
-    if not relevant:
-        return None, 0.0, 0.0
-
-    uptime_seconds = 0.0
-    downtime_seconds = 0.0
-    for index, row in enumerate(relevant):
-        started = _as_utc(row.timestamp)
-        ended = (
-            _as_utc(relevant[index + 1].timestamp)
-            if index + 1 < len(relevant)
-            else as_of
-        )
-        ended = min(ended, as_of)
-        duration = max(0.0, (ended - started).total_seconds())
-        if row.state == "OFFLINE":
-            downtime_seconds += duration
-        else:
-            uptime_seconds += duration
-
-    return _as_utc(relevant[0].timestamp), uptime_seconds, downtime_seconds
 
 
 def save_group_health(engine: Engine, rows: list[GroupHealth]) -> None:
@@ -72,15 +60,23 @@ def list_group_health_history(engine: Engine, group_id: int, since: datetime) ->
         return list(session.scalars(stmt))
 
 
+def count_group_samples(
+    engine: Engine, group_id: int
+) -> tuple[int, int, datetime | None]:
+    """(non-offline samples, offline samples, first sample time) of a group."""
+    offline = GroupHealth.state == "OFFLINE"
+    stmt = select(
+        func.count().filter(~offline),
+        func.count().filter(offline),
+        func.min(GroupHealth.timestamp),
+    ).where(GroupHealth.group_id == group_id)
+    with Session(engine) as session:
+        up, down, first = session.execute(stmt).one()
+    return up, down, first
+
+
 def list_group_uptime(
     engine: Engine, group_id: int, as_of: datetime
 ) -> tuple[datetime | None, float, float]:
-    """Calculate all recorded uptime and downtime through `as_of`."""
-    stmt = (
-        select(GroupHealth)
-        .where(GroupHealth.group_id == group_id)
-        .order_by(GroupHealth.timestamp, GroupHealth.id)
-    )
-    with Session(engine, expire_on_commit=False) as session:
-        rows = list(session.scalars(stmt))
-    return calculate_group_uptime(rows, as_of)
+    """Estimate uptime/downtime by counting fixed-interval samples in the DB."""
+    return calculate_group_uptime(*count_group_samples(engine, group_id))

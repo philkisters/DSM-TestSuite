@@ -35,11 +35,17 @@ export const GroupHealthEventApiSchema = z.object({
   group_id: z.number(),
   state: z.string(),
   failures: z.number(),
+  since: wireDate.nullable(),
+  uptime_seconds: z.number(),
+  downtime_seconds: z.number(),
   timestamp: wireDate.default(() => new Date()),
 }).strict().transform((g) => ({
   groupId: g.group_id,
   state: OrchestratorStatus[g.state as keyof typeof OrchestratorStatus],
   failures: g.failures,
+  since: g.since,
+  uptimeSeconds: g.uptime_seconds,
+  downtimeSeconds: g.downtime_seconds,
   timestamp: g.timestamp,
 }))
 

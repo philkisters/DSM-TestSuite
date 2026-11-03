@@ -60,7 +60,9 @@ def get_group_health(group_id: int, request: Request):
 @router.get("/{group_id}/uptime", response_model=GroupUptime)
 def get_group_uptime(group_id: int, request: Request):
     as_of = datetime.now(timezone.utc)
-    since, uptime_seconds, downtime_seconds = list_group_uptime(
+    service = getattr(request.app.state, "health_service", None)
+    result = service.get_uptime(group_id) if service else None
+    since, uptime_seconds, downtime_seconds = result or list_group_uptime(
         get_engine(request), group_id, as_of
     )
     total_seconds = uptime_seconds + downtime_seconds

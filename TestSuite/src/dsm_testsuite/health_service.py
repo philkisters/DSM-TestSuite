@@ -2,6 +2,7 @@
 import asyncio
 import logging
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from enum import Enum
 
 import httpx
@@ -10,11 +11,12 @@ from dsm_db import GroupHealth as GroupHealthRow
 
 from .clients import OrchestratorClient
 from .db import list_groups, save_group_health
+from .db.health import SAMPLE_INTERVAL_SECONDS, calculate_group_uptime, count_group_samples
 from .schemas import GroupHealthEvent
 
 logger = logging.getLogger(__name__)
 
-CHECK_INTERVAL = 5.0
+CHECK_INTERVAL = SAMPLE_INTERVAL_SECONDS
 PROBE_TIMEOUT = 3.0
 RETRIES = 3
 SUBSCRIBER_QUEUE_SIZE = 100
@@ -33,6 +35,10 @@ class GroupHealth:
     vm_ip: str | None
     state: HealthState = HealthState.OFFLINE
     failures: int = 0
+    up_samples: int = 0
+    down_samples: int = 0
+    first_sample: datetime | None = None
+    counts_loaded: bool = False
 
 
 class HealthService:
@@ -43,6 +49,13 @@ class HealthService:
         self._http: httpx.AsyncClient | None = None
         self._published: dict[int, GroupHealthEvent] = {}
         self._subscribers: set[asyncio.Queue[GroupHealthEvent]] = set()
+
+    def get_uptime(self, group_id: int) -> tuple[datetime | None, float, float] | None:
+        """In-memory uptime/downtime seconds, or None if the group isn't tracked yet."""
+        entry = self._health.get(group_id)
+        if entry is None or not entry.counts_loaded:
+            return None
+        return calculate_group_uptime(entry.up_samples, entry.down_samples, entry.first_sample)
 
     def subscribe(self) -> asyncio.Queue[GroupHealthEvent]:
         """Queue pre-filled with the last known state of every group, then state changes."""
@@ -93,15 +106,36 @@ class HealthService:
         for g in groups:
             entry = self._health.setdefault(g.id, GroupHealth(g.id, g.name, g.vm_ip))
             entry.name, entry.vm_ip = g.name, g.vm_ip
+            if not entry.counts_loaded:
+                # Seed counters from history once; afterwards they are only incremented.
+                up, down, first = await asyncio.to_thread(count_group_samples, self.engine, g.id)
+                entry.up_samples, entry.down_samples, entry.first_sample = up, down, first
+                entry.counts_loaded = True
             entries.append(entry)
         # All probes run concurrently; each is bounded by PROBE_TIMEOUT.
         await asyncio.gather(*(self._check_one(e) for e in entries))
-        for e in entries:
-            previous = self._published.get(e.group_id)
-            if previous is None or previous.state != e.state.value:
-                self._publish(GroupHealthEvent(group_id=e.group_id, state=e.state.value, failures=e.failures))
         rows = [GroupHealthRow(group_id=e.group_id, state=e.state.value, failures=e.failures) for e in entries]
         await asyncio.to_thread(save_group_health, self.engine, rows)
+        now = datetime.now(timezone.utc)
+        for e in entries:
+            if e.state is HealthState.OFFLINE:
+                e.down_samples += 1
+            else:
+                e.up_samples += 1
+            e.first_sample = e.first_sample or now
+            # Published every cycle so clients receive up-to-date uptime counters.
+            since, uptime, downtime = calculate_group_uptime(e.up_samples, e.down_samples, e.first_sample)
+            self._publish(
+                GroupHealthEvent(
+                    group_id=e.group_id,
+                    state=e.state.value,
+                    failures=e.failures,
+                    since=since,
+                    uptime_seconds=uptime,
+                    downtime_seconds=downtime,
+                    timestamp=now,
+                )
+            )
 
     async def _check_one(self, entry: GroupHealth) -> None:
         ok = False

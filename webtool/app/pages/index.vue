@@ -23,7 +23,7 @@ const groupStore = useGroupStore()
 
 const groups = computed(() => groupStore.groups)
 
-const showGroupHealth = ref(false)
+const showGroupHealth = ref(true)
 
 const activeGroupName = computed(() => groupStore.activeGroup?.name ?? 'Guest')
 </script>

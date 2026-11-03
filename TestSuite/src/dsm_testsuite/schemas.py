@@ -46,11 +46,14 @@ class GroupUptime(BaseModel):
 
 
 class GroupHealthEvent(BaseModel):
-    """Pushed over the health websocket whenever a group's state changes."""
+    """Pushed over the health websocket after every health check cycle."""
 
     group_id: int
     state: str
     failures: int
+    since: datetime | None = None
+    uptime_seconds: float = 0.0
+    downtime_seconds: float = 0.0
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

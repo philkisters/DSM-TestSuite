@@ -11,8 +11,8 @@ function isUptimeState(state: OrchestratorStatus): boolean {
 }
 
 /**
- * Loads all-history uptime once, then accounts for elapsed time and health
- * transitions received through the group's existing health subscription.
+ * Loads all-history uptime once, then takes the counters pushed with every
+ * health event and interpolates elapsed time between events.
  */
 export function useGroupUptime(groupId: MaybeRefOrGetter<number | null | undefined>) {
   const groupStore = useGroupStore()
@@ -46,14 +46,11 @@ export function useGroupUptime(groupId: MaybeRefOrGetter<number | null | undefin
     const eventTime = event.timestamp.getTime()
     if (eventTime <= lastEventAt.value) return
 
-    if (event.state !== state.value && asOf.value) {
-      const elapsed = Math.max(0, eventTime - asOf.value.getTime()) / 1000
-      if (isUptimeState(state.value)) uptimeBase.value += elapsed
-      else if (state.value === OrchestratorStatus.OFFLINE) downtimeBase.value += elapsed
-      asOf.value = event.timestamp
-      state.value = event.state
-    }
-
+    uptimeBase.value = event.uptimeSeconds
+    downtimeBase.value = event.downtimeSeconds
+    since.value = event.since
+    asOf.value = event.timestamp
+    state.value = event.state
     lastEventAt.value = eventTime
   }
 
