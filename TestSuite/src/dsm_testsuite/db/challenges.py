@@ -56,30 +56,52 @@ def get_challenge_results_for_group(
 ) -> ChallengeResults:
     """Per-group outcome of a challenge plus all runs of `group_id` for it.
 
-    A group passed with the timestamp of its first passed run; otherwise it is failed
-    with the timestamp of its latest failed/errored run (None if there is none).
+    Each successful result is (message count, duration in seconds, completion
+    timestamp). Missing metrics are None. For groups without a success, timestamp
+    is the latest failed/errored run's completion time, if any.
     """
     with Session(engine) as session:
         groups = session.scalars(select(Group.id).where(Group.archived.is_(False)))
         group_results = {gid: GroupChallengeResult(status="failed") for gid in groups}
         runs = session.scalars(
-            select(Run).where(Run.challenge_id == challenge_id).order_by(Run.started_at)
+            select(Run).where(Run.challenge_id == challenge_id).order_by(Run.started_at, Run.id)
         )
         run_results: list[RunSchema] = []
         for run in runs:
-            if run.group_id == group_id:
-                run_results.append(RunSchema.model_validate(run))
             result = group_results.get(run.group_id)
+            run_schema = None
+            if run.group_id == group_id or (result is not None and run.status == "passed"):
+                run_schema = RunSchema.model_validate(run)
+            if run.group_id == group_id:
+                assert run_schema is not None
+                run_results.append(run_schema)
             if result is None:
                 continue
             when = run.finished_at or run.started_at
             if run.status == "passed":
-                if result.status != "passed":
-                    group_results[run.group_id] = GroupChallengeResult(
-                        status="passed", timestamp=when
+                assert run_schema is not None
+                message_count = run_schema.message_count
+                duration = run_schema.duration_seconds
+                success = (message_count, duration, when)
+                result.status = "passed"
+                if result.first_success is None or when < result.first_success[2]:
+                    result.first_success = success
+                    result.timestamp = when
+                if message_count is not None and (
+                    result.lowest_message_count is None
+                    or (message_count, when) < (
+                        result.lowest_message_count[0], result.lowest_message_count[2]
                     )
+                ):
+                    result.lowest_message_count = (message_count, duration, when)
+                if duration is not None and (
+                    result.shortest_duration is None
+                    or (duration, when) < (result.shortest_duration[1], result.shortest_duration[2])
+                ):
+                    result.shortest_duration = (message_count, duration, when)
             elif run.status in ("failed", "error") and result.status != "passed":
-                result.timestamp = when
+                if result.timestamp is None or when > result.timestamp:
+                    result.timestamp = when
         run_results.reverse()
     return ChallengeResults(group_results=group_results, run_results=run_results)
 

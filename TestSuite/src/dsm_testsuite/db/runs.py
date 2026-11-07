@@ -75,12 +75,32 @@ def insert_run(engine: Engine, run: "RunSchema") -> None:
         )
 
 
-def update_run(engine: Engine, run: "RunSchema") -> None:
+def update_run(engine: Engine, run: "RunSchema", message_count: int | None = None) -> None:
+    """Update run status and optionally store message count in metrics.
+    
+    Args:
+        engine: Database engine
+        run: Run object with updated status and finished_at
+        message_count: Optional number of peer messages recorded during the run
+    """
+    updates: dict = {
+        "status": run.status.value,
+        "finished_at": run.finished_at,
+    }
+    
+    # If message count is provided, store it in metrics
+    if message_count is not None:
+        metrics = {"message_count": message_count}
+        # If run already has metrics (e.g., peers), merge them
+        if run.metrics:
+            metrics.update(run.metrics)
+        updates["metrics"] = metrics
+    
     with Session(engine) as session, session.begin():
         session.execute(
             update(Run)
             .where(Run.id == run.id)
-            .values(status=run.status.value, finished_at=run.finished_at)
+            .values(**updates)
         )
 
 

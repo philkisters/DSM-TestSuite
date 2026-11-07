@@ -22,17 +22,60 @@
       <ChallengesStatus v-if="challengeResults" :status="challengeResults.groupResults.get(groupStore.activeGroup!.id)!.status" class="ml-4" size="xl"/>
     </div>
     <USeparator class="my-4" />
-    <div class="flex overflow-y-scroll" v-if="challengeResults">
+    <div class="flex overflow-y-scroll gap-4" v-if="challengeResults">
       <div class="flex-1 flex flex-col">
-        <div class="text-lg text-center">
-          Your results
+        <div class="flex flex-wrap items-center justify-between gap-3 px-2">
+          <h2 class="text-lg">
+            Group Overview
+          </h2>
+          <div class="flex gap-2">
+            <UButton
+              icon="lucide-clock"
+              color="primary"
+              variant="ghost"
+              class="text-primary"
+              title="Order by first success"
+              aria-label="Order by first success"
+            />
+          </div>
         </div>
         <USeparator class="my-2" />
         <ChallengesRunInfo class="cursor-pointer hover:bg-muted rounded" v-for="run in challengeResults.runResults" :key="run.id" :run="run" @click="showRunDetails(run)" />
       </div>
-      <div class="flex-1">
-        <div class="text-lg">
-          Group Overview 
+      <div class="flex-1 min-w-0">
+        <div class="flex flex-wrap items-center justify-between gap-3 px-2">
+          <h2 class="text-lg">
+            Group Overview
+          </h2>
+          <div class="flex gap-2">
+            <UButton
+              icon="lucide-clock"
+              :color="ranking === 'firstSuccess' ? 'primary' : 'neutral'"
+              variant="ghost"
+              :class="{ 'text-primary': ranking === 'firstSuccess' }"
+              @click="ranking = 'firstSuccess'"
+              title="Order by first success"
+              aria-label="Order by first success"
+            />
+            <UButton
+              icon="lucide-mail"
+              :color="ranking === 'messages' ? 'primary' : 'neutral'"
+              variant="ghost"
+              :class="{ 'text-primary': ranking === 'messages' }"
+              @click="ranking = 'messages'"
+              title="Order by fewest messages"
+              aria-label="Order by fewest messages"
+            />
+            <UButton
+              icon="lucide-hourglass"
+              :color="ranking === 'duration' ? 'primary' : 'neutral'"
+              variant="ghost"
+              :class="{ 'text-primary': ranking === 'duration' }"
+              @click="ranking = 'duration'"
+              title="Order by shortest duration"
+              aria-label="Order by shortest duration"
+            />
+          </div>
         </div>
         <USeparator class="my-2" />
         <ChallengesGroupStatus
@@ -40,7 +83,11 @@
           :key="groupId"
           :group-name="groupName(groupId)"
           :group-status="result"
+          :ranking="ranking"
         />
+        <p v-if="sortedGroupResults.length === 0" class="p-4 text-sm text-muted">
+          {{ ranking === 'firstSuccess' ? 'No groups available.' : 'No successful groups yet.' }}
+        </p>
       </div>
     </div>
     <UiLoading v-else text="Loading your results..." />
@@ -59,6 +106,7 @@ import { createRun } from '~~/app/services/backend/run.service'
 import type { Challenge, ChallengeResults } from '~~/shared/challenges'
 import type { Run } from '~~/shared/run'
 import { OrchestratorStatus } from '~~/shared/group'
+import { sortChallengeGroups, type ChallengeRanking } from '~~/app/utils/challengeRanking'
 
 
 const { challenge } = defineProps<{
@@ -73,22 +121,10 @@ const activeRun = ref<Run | null>(null)
 
 const groupName = computed(() => (groupId: number) => groupStore.groups.find(group => group.id === groupId)?.name ?? 'Unknown')
 
-// Passed groups first (earliest pass on top), then the rest by most recent try
-const sortedGroupResults = computed(() => {
-  const entries = [...(challengeResults.value?.groupResults.entries() ?? [])]
-  const time = (t?: Date) => t?.getTime()
-  return entries.sort(([, a], [, b]) => {
-    const aPassed = a.status === 'passed'
-    const bPassed = b.status === 'passed'
-    if (aPassed !== bPassed) return aPassed ? -1 : 1
-    const ta = time(a.timestamp)
-    const tb = time(b.timestamp)
-    if (ta === tb) return 0
-    if (ta === undefined) return 1
-    if (tb === undefined) return -1
-    return aPassed ? ta - tb : tb - ta
-  })
-})
+const ranking = ref<ChallengeRanking>('firstSuccess')
+const sortedGroupResults = computed(() =>
+  sortChallengeGroups(challengeResults.value?.groupResults ?? new Map(), ranking.value)
+)
 
 defineEmits<{
   (e: 'close'): void
@@ -135,6 +171,12 @@ function updateStatus(runId: string, status: 'running' | 'passed' | 'failed' | '
   const run = challengeResults.value?.runResults.find(r => r.id === runId)
   if (run) {
     run.status = status
+  }
+  if (status !== 'running') {
+    refreshChallengeResults().catch((err) => {
+      toast.add({ color: 'error', title: 'Error', description: 'Failed to refresh challenge results' })
+      console.error('Failed to refresh challenge results:', err)
+    })
   }
 }
 </script>

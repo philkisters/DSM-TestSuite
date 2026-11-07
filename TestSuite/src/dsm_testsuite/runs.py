@@ -10,7 +10,7 @@ from threading import Lock
 import httpx
 
 from .db import Engine, insert_run, update_run, update_run_peers, save_assertion
-from .clients import OrchestratorClient, ProxyClient
+from .clients import ClientError, OrchestratorClient, ProxyClient
 from .config import settings
 from .executor import execute_scenario
 from .scenario import Scenario
@@ -98,6 +98,7 @@ class RunManager:
         self.publish(RunEvent(run_id=run.id, type="status", data={"status": run.status}))
 
         persisted_peers: list[str] = []
+        message_count: int | None = None
 
         async def report(index: int, step: dict, passed: bool, message: str | None) -> None:
             peers = sorted(ctx.started_peers)
@@ -128,14 +129,25 @@ class RunManager:
                     orchestrator=OrchestratorClient(vm_ip, run.network_id, http),
                     proxy=ProxyClient(settings.proxy_admin_url, run.network_id, http),
                 )
-                status = await execute_scenario(scenario, ctx, report)
+                try:
+                    status = await execute_scenario(scenario, ctx, report)
+                except Exception:
+                    logger.exception("Run %s crashed", run.id)
+                    status = RunStatus.ERROR
+                self._set_status(run, status)
+                try:
+                    message_count = await ctx.proxy.message_count()
+                    logger.info("Run %s: counted %d peer messages", run.id, message_count)
+                except ClientError:
+                    logger.exception("Could not fetch message count for run %s", run.id)
         except Exception:
             logger.exception("Run %s crashed", run.id)
-            status = RunStatus.ERROR
-        self._set_status(run, status)
-        await self._persist(update_run, run)
+            self._set_status(run, RunStatus.ERROR)
+
+        await self._persist(update_run, run, message_count)
         self.publish(RunEvent(run_id=run.id, type="status", data={"status": run.status}))
         self._forget(run.id)
+
 
     def _forget(self, run_id: str) -> None:
         """Drop a finished run from memory; the DB is the source of truth from here on."""

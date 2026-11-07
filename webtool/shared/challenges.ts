@@ -34,12 +34,36 @@ export class Challenge implements ChallengeApiModel {
   }
 }
 
+export const ChallengeSuccessApiSchema = z.tuple([
+  z.number().int().nullable(),
+  z.number().nullable(),
+  wireDate,
+])
+
+const LowestMessageCountApiSchema = z.tuple([
+  z.number().int(),
+  z.number().nullable(),
+  wireDate,
+])
+
+const ShortestDurationApiSchema = z.tuple([
+  z.number().int().nullable(),
+  z.number(),
+  wireDate,
+])
+
 export const GroupChallengeResultApiSchema = z.object({
   status: z.enum(['passed', 'failed']),
   timestamp: wireDate.nullable(),
+  first_success: ChallengeSuccessApiSchema.nullable(),
+  lowest_message_count: LowestMessageCountApiSchema.nullable(),
+  shortest_duration: ShortestDurationApiSchema.nullable(),
 }).transform((r) => ({
   status: r.status,
   timestamp: r.timestamp ?? undefined,
+  firstSuccess: r.first_success ?? undefined,
+  lowestMessageCount: r.lowest_message_count ?? undefined,
+  shortestDuration: r.shortest_duration ?? undefined,
 }))
 
 export const ChallengeResultsApiSchema = z.object({

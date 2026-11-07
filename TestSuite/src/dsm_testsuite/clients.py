@@ -64,10 +64,46 @@ class ProxyClient:
         return await _request(
             self.http, "POST", f"{self.base_url}{path}", json={**body}
         )
+    
+    async def _get(self, path: str, **kwargs) -> httpx.Response:
+        return await _request(
+            self.http, "GET", f"{self.base_url}{path}", **kwargs
+        )
 
     async def peers(self) -> list[dict]:
         response = await _request(self.http, "GET", f"{self.base_url}/api/networks/{self.network_id}/peers")
         return response.json()
+    
+    async def message_count(self, exclude_sender: str = "TestSuite") -> int:
+        """Count successfully forwarded peer-to-peer messages excluding a sender.
+        
+        Queries the proxy for the number of messages that were successfully relayed,
+        excluding diagnostic/test messages from the specified sender. Useful for counting
+        repair messages in recovery scenarios.
+        
+        Args:
+            exclude_sender: Peer sender to exclude (default: TestSuite for diagnostic messages)
+        
+        Returns:
+            Number of successfully forwarded messages (status='forwarded') excluding the sender
+        
+        Raises:
+            ClientError: If the proxy query fails
+        """
+        try:
+            response = await self._get(
+                "/api/message-stats",
+                params={
+                    "network_id": self.network_id,
+                    "exclude_sender": exclude_sender,
+                    "status": "forwarded"
+                }
+            )
+            return response.json().get("count", 0)
+        except ClientError:
+            raise
+        except Exception as exc:
+            raise ClientError(f"Failed to query message count: {exc!r}") from exc
     
     async def _send_message(self, message: Message) -> Message:
         response = await _request(

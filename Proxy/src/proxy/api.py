@@ -57,6 +57,29 @@ def create_app(registry: Registry, hub: Hub, recorder: Recorder, stats: Stats) -
     async def network_peers(network_id: str):
         return [p.to_json() for p in registry.peers(network_id)]
     
+    @app.get("/api/message-stats")
+    async def message_stats(network_id: str, exclude_sender: str = "TestSuite", status: str = "forwarded"):
+        """Count successfully forwarded messages for a network, excluding a sender.
+        
+        Args:
+            network_id: The network to query (required)
+            exclude_sender: Exclude messages from this peer sender (default: TestSuite)
+            status: Filter by message status (default: forwarded for successful messages)
+        
+        Returns:
+            {"count": int, "network_id": str}
+        """
+        if not network_id:
+            raise HTTPException(status_code=400, detail="network_id is required")
+        
+        async with recorder.pool.acquire() as conn:
+            count = await conn.fetchval(
+                "SELECT COUNT(*) FROM proxy.events "
+                "WHERE network_id = $1 AND status = $2 AND src_peer != $3",
+                network_id, status, exclude_sender
+            )
+        return {"count": count or 0, "network_id": network_id}
+    
     @app.post("/api/message")
     async def sendMessage(body: Message):
         try:

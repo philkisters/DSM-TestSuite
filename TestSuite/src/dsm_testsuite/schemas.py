@@ -109,11 +109,28 @@ class Run(BaseModel):
     started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     finished_at: datetime | None = None
     metrics: dict | None = None
+    
+    @property
+    def duration_seconds(self) -> float | None:
+        """Calculate run duration in seconds; returns None if not finished."""
+        if self.started_at and self.finished_at:
+            return (self.finished_at - self.started_at).total_seconds()
+        return None
+    
+    @property
+    def message_count(self) -> int | None:
+        """Get message count from metrics; returns None if not recorded."""
+        if self.metrics and "message_count" in self.metrics:
+            return self.metrics["message_count"]
+        return None
 
 
 class GroupChallengeResult(BaseModel):
     status: Literal["passed", "failed"]
     timestamp: datetime | None = None
+    first_success: tuple[int | None, float | None, datetime] | None = None
+    lowest_message_count: tuple[int, float | None, datetime] | None = None
+    shortest_duration: tuple[int | None, float, datetime] | None = None
 
 
 class ChallengeResults(BaseModel):

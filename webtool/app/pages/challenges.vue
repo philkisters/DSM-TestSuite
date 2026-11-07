@@ -1,6 +1,6 @@
 <template>
   <div class="flex min-w-0 flex-grow">
-    <div class="flex flex-col border-r-muted border-r-1 min-w-48">
+    <div class="flex flex-col border-r-muted border-r-1 min-w-48 overflow-y-scroll">
       <PanelButton v-for="challenge in challenges" :key="challenge.id" :class="{ 'bg-primary/30': selectedChallenge?.id === challenge.id }">
         <div class="flex flex-col" @click="setSelectedChallenge(challenge)">
           <div class="text-lg font-semibold">
