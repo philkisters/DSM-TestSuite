@@ -39,6 +39,6 @@ onBeforeUnmount(() => groupStore.stopHealthUpdates())
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
-    <GroupSelectionModal v-if="activeGroup === null" />
+    <GroupSelectionModal v-if="groupStore.initialized && activeGroup === null" />
   </UApp>
 </template>

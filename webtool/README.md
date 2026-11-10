@@ -50,6 +50,13 @@ The backend group service exposes `getGroupChallengeOverview(groupId)` for
 challenge statistics and first-, second-, and third-place counts for time,
 duration, and messages; challenge timestamps are parsed as dates.
 
+## Group selection
+
+The selected group is saved in browser local storage and restored after the
+group list loads. If no group is saved, or the saved group is no longer in the
+list, the group selector is shown. Clicking the active group in the header
+clears the selection and opens the selector again.
+
 ## Production
 
 Build the application for production:

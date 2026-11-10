@@ -94,6 +94,8 @@ If we see that we are not our neighbors neighbor, we need to repair. This has a 
 ### Leave
 To leave gracefully, send a leave message with your predecessor and successor to your two neighbors, so that they can fix the ring, without waiting for their heartbeat to detect the missing node. 
 
+Additionally, when leaving the network the peer needs to calculate the reverse finger table and send leave messages to all peers having a finger pointing to them. 
+
 Nonetheless, your peer should also support the option that it gets "crashed" by the manager, so that we can test non-gracefull leaves.
 
 ## Data Structure
@@ -102,11 +104,11 @@ These are a fixed set of example images of 32x32 pixel images.
 They are named image-X.png where X is a number between 0 and 6079, both included. 
 
 ### Putting an image
-To put an image the "putter" needs to find the correct peer, which hashed Id is smaller or equal to the hashed image id. 
-If an image hash is smaller than the smallest hash in the ring the largest peer is responsible. 
+To put an image the image Id is hashed and put onto any peer.
+Peers should accept every image and send an acknowlegement. 
+If an image hash is smaller between this peer and its predecessor, this peer is responsible and stores the image.
+Otherwise, the image should be forwarded to another (better matching) peer.
 This way images should be distributed evenly accross the network.
-
-If a peer receives a `PutImage` message for an image ID it is not resposible for. It should respond with an error message. Otherwise store the image and send an acknowledge message. 
 
 ### Searching an Image
 To search an image the searching should hash the searched image id and traverse the ring to the correct peer. It can then first list the images available on that peer, to see if that image exists. Otherwise it can also directly request the image. 

@@ -48,23 +48,28 @@ export const useGroupStore = defineStore('group', {
       this.isLoading = true
       try {
         this.groups = await getGroups()
-        const healthStatus = await fetchGroupHealthStatus()
-
-        for (const group of this.groups) {
-          const status = healthStatus.find(h => h.groupId === group.id)
-          if (status) {
-            group.orchestratorStatus = status.state
-          }
-        }
-
         const savedGroupId = useSettingsStore().activeGroupId
-        if (!this.activeGroup && savedGroupId !== null) this.setActiveGroup(savedGroupId)
+        if (savedGroupId !== null) this.setActiveGroup(savedGroupId)
+        else this.activeGroup = null
+        this.initialized = true
+
+        try {
+          const healthStatus = await fetchGroupHealthStatus()
+          for (const group of this.groups) {
+            const status = healthStatus.find(h => h.groupId === group.id)
+            if (status) {
+              group.orchestratorStatus = status.state
+            }
+          }
+        } catch (error) {
+          useToast().add({ title: 'Error', description: 'Failed to fetch group health status', color: 'error' })
+          console.error('Failed to fetch group health status:', error)
+        }
       } catch (error) {
         useToast().add({ title: 'Error', description: 'Failed to fetch groups', color: 'error' })
         console.error('Failed to fetch groups:', error)
       } finally {
         this.isLoading = false
-        this.initialized = true
       }
     },
     async createGroup(groupData: Partial<Group>) {

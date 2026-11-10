@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col">
+  <div class="flex w-full min-w-0 flex-col">
     <div class="flex flex-col">
       <h1 class="text-center text-4xl lg:text-6xl font-bold my-4">Challenges</h1>
       <p class="text-center text-2xl lg:text-4xl mt-4">
@@ -8,7 +8,7 @@
     </div>
     <USeparator class="my-4"/>
     <UiLoading v-if="loading" text="Loading Group Challenge results..." />
-    <div v-else class="overflow-scroll flex flex-col">
+    <div v-else class="flex min-w-0 flex-col overflow-y-auto">
       <div class="flex justify-end">
         <UInput
           v-model="keyFilter"
@@ -17,8 +17,8 @@
         />
       </div>
       <USeparator class="my-4"/>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-        <UCard v-for="stat in filteredGroupChallengeStats" :key="stat.key" class="cursor-pointer hover:bg-muted" @click="emit('select', stat.key)">
+      <div class="grid w-full min-w-0 grid-cols-1 gap-4 p-4 md:grid-cols-2 lg:grid-cols-3">
+        <UCard v-for="stat in filteredGroupChallengeStats" :key="stat.key" class="min-w-0 cursor-pointer hover:bg-muted" @click="emit('select', stat.key)">
           <template #header>
             <div class="flex items-center space-x-4">
               <UIcon v-if="stat.successes > 0" name="lucide-check-circle" color="primary" class="size-8 text-primary" />
