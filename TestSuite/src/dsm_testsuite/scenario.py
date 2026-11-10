@@ -32,6 +32,7 @@ class Scenario(BaseModel):
     name: str
     description: str = ""
     archived: bool = Field(default=False, validation_alias=AliasChoices("archived"))
+    check_fingers: bool = Field(default=False)
     steps: Annotated[list[Step], BeforeValidator(_parse_steps)]
 
 

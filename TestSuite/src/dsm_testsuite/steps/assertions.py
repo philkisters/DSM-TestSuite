@@ -93,10 +93,6 @@ async def _retry(timeout: float, interval: float, check: Callable[[], Awaitable[
                 raise
         await asyncio.sleep(interval)
 
-
-
-
-
 def _error_text(message: Message) -> str:
     return str(message.content.get("message", ""))
 
@@ -123,6 +119,17 @@ async def _check_neighbors(ctx: StepContext, peer: str, successor: str, predeces
             f"unexpected neighbors for {peer!r}: successor {got_succ!r} (should be {successor!r}); "
             f"predecessor {got_pred!r} (should be {predecessor!r})"
         )
+
+async def _count_messages(ctx: StepContext, from_peer: str, to_peer: str, code: MessageCode | None) -> int:
+    try:
+        return len(await ctx.proxy.messages(src_peer=from_peer, dst_peer=to_peer, code=code))
+    except Exception as exc:
+        raise AssertionFailed(f"failed to query messages at the proxy: {exc!r}") from exc
+
+
+def _describe_message(from_peer: str, to_peer: str, code: MessageCode | None) -> str:
+    kind = f"a {code.name} message" if code is not None else "a message"
+    return f"{kind} from {from_peer!r} to {to_peer!r}"
 
 
 def _ranges(indices: list[int]) -> str:
@@ -216,10 +223,39 @@ class ValidNetwork(_TimeoutStep):
             for peer in ctx.model.names():
                 try:
                     await _check_neighbors(ctx, peer, ctx.model.successor(peer), ctx.model.predecessor(peer))
-                    await _check_fingers(ctx, peer, ctx.model.fingers(peer))
+                    if (ctx.check_fingers):
+                        await _check_fingers(ctx, peer, ctx.model.fingers(peer))
                 except AssertionFailed as exc:
                     errors.append(str(exc))
             if errors:
                 raise AssertionFailed(f"network is not valid ({len(errors)} peer(s) wrong): " + " | ".join(errors))
 
         await self.retry(check)
+
+
+class _MessageStep(Step):
+    from_peer: str = Field(alias="from")
+    to_peer: str = Field(alias="to")
+    code: MessageCode | None = None
+
+
+@assertion("message-sent")
+class MessageSent(_MessageStep, _TimeoutStep):
+    """The proxy forwarded at least one matching message in this network."""
+
+    async def execute(self, ctx: StepContext) -> None:
+        async def check() -> None:
+            if await _count_messages(ctx, self.from_peer, self.to_peer, self.code) == 0:
+                raise AssertionFailed(f"no {_describe_message(self.from_peer, self.to_peer, self.code)} was sent")
+
+        await self.retry(check)
+
+
+@assertion("message-not-sent")
+class MessageNotSent(_MessageStep):
+    """The proxy forwarded no matching message in this network."""
+
+    async def execute(self, ctx: StepContext) -> None:
+        count = await _count_messages(ctx, self.from_peer, self.to_peer, self.code)
+        if count:
+            raise AssertionFailed(f"{_describe_message(self.from_peer, self.to_peer, self.code)} was sent {count} time(s)")

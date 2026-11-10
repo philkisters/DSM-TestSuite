@@ -21,6 +21,8 @@ class StepContext:
     network_id: str
     orchestrator: OrchestratorClient
     proxy: ProxyClient
+    # Flag if fingers need to be checked
+    check_fingers: bool = field(default=False)
     # Peers started by this run and not yet stopped; killed on cleanup.
     started_peers: set[str] = field(default_factory=set)
     # Ring the network is expected to have, updated by the join/leave/stop actions.

@@ -25,6 +25,12 @@ class Recorder:
         self.on_event = on_event
         self.registry_queue: asyncio.Queue = asyncio.Queue(max_queue)
         self._task: asyncio.Task | None = None
+        self._inflight: list[tuple] = []
+
+    def pending_events(self) -> list[dict]:
+        """Message events not yet visible in Postgres (queued or currently being flushed)."""
+        rows = list(self._inflight) + list(self.queue._queue)
+        return [dict(zip(COLUMNS, r)) | {"content": json.loads(r[-1]) if r[-1] else None} for r in rows]
 
     def record(self, *, network_id, src_peer=None, dst_peer=None, code=None, size=0, status, delay_ms=None, content=None) -> None:
         row = (datetime.now(timezone.utc), network_id, src_peer, dst_peer, code,
@@ -63,17 +69,23 @@ class Recorder:
             await self._flush()
 
     async def _flush(self) -> None:
-        await self._flush_queue(self.queue, "events", COLUMNS)
+        await self._flush_queue(self.queue, "events", COLUMNS, track=True)
         await self._flush_queue(self.registry_queue, "registry_events", REGISTRY_COLUMNS)
 
-    async def _flush_queue(self, queue: asyncio.Queue, table: str, columns: list[str]) -> None:
+    async def _flush_queue(self, queue: asyncio.Queue, table: str, columns: list[str],
+                           track: bool = False) -> None:
         rows = []
         while not queue.empty() and len(rows) < self.batch:
             rows.append(queue.get_nowait())
         if not rows:
             return
+        if track:
+            self._inflight = rows
         try:
             async with self.pool.acquire() as conn:
                 await conn.copy_records_to_table(table, records=rows, columns=columns, schema_name="proxy")
         except Exception:
             log.exception("flush to %s failed, %d events lost", table, len(rows))
+        finally:
+            if track:
+                self._inflight = []

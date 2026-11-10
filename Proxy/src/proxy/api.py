@@ -2,6 +2,7 @@
 import asyncio
 import json
 import time
+from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field, ConfigDict
@@ -80,6 +81,39 @@ def create_app(registry: Registry, hub: Hub, recorder: Recorder, stats: Stats) -
             )
         return {"count": count or 0, "network_id": network_id}
     
+    @app.get("/api/messages")
+    async def messages(network_id: str, src_peer: str | None = None, dst_peer: str | None = None,
+                       code: int | None = None, status: str | None = "forwarded",
+                       since: datetime | None = None, limit: int = 100):
+        """Recorded messages of a network, including events still queued for Postgres."""
+        limit = min(max(limit, 1), 1000)
+
+        def match(r: dict) -> bool:
+            return (r["network_id"] == network_id
+                    and (src_peer is None or r["src_peer"] == src_peer)
+                    and (dst_peer is None or r["dst_peer"] == dst_peer)
+                    and (code is None or r["code"] == code)
+                    and (status is None or r["status"] == status)
+                    and (since is None or r["ts"] >= since))
+
+        # Snapshot memory before reading the DB so a row mid-flush is never missed.
+        pending = [r for r in recorder.pending_events() if match(r)]
+        async with recorder.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT ts, network_id, src_peer, dst_peer, code, size, status, delay_ms, content "
+                "FROM proxy.events WHERE network_id = $1 "
+                "AND ($2::text IS NULL OR src_peer = $2) AND ($3::text IS NULL OR dst_peer = $3) "
+                "AND ($4::int IS NULL OR code = $4) AND ($5::text IS NULL OR status = $5) "
+                "AND ($6::timestamptz IS NULL OR ts >= $6) ORDER BY ts DESC LIMIT $7",
+                network_id, src_peer, dst_peer, code, status, since, limit)
+        stored = [{**r, "content": json.loads(r["content"]) if r["content"] else None}
+                  for r in map(dict, rows)]
+        key = lambda r: (r["ts"], r["src_peer"], r["dst_peer"], r["code"])
+        seen = {key(r) for r in stored}  # a row can be in both if it was flushed meanwhile
+        merged = sorted(stored + [r for r in pending if key(r) not in seen],
+                        key=lambda r: r["ts"], reverse=True)[:limit]
+        return [{**r, "ts": r["ts"].isoformat()} for r in merged]
+
     @app.post("/api/message")
     async def sendMessage(body: Message):
         try:

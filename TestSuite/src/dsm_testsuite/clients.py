@@ -105,6 +105,15 @@ class ProxyClient:
         except Exception as exc:
             raise ClientError(f"Failed to query message count: {exc!r}") from exc
     
+    async def messages(self, src_peer: str | None = None, dst_peer: str | None = None,
+                       code: int | None = None, limit: int = 1000) -> list[dict]:
+        """Forwarded messages of this network (including events not yet persisted), newest first."""
+        params = {"network_id": self.network_id, "limit": limit}
+        for key, value in (("src_peer", src_peer), ("dst_peer", dst_peer), ("code", code)):
+            if value is not None:
+                params[key] = int(value) if key == "code" else value
+        return (await self._get("/api/messages", params=params)).json()
+
     async def _send_message(self, message: Message) -> Message:
         response = await _request(
             self.http, "POST",
