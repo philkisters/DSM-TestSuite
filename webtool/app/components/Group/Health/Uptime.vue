@@ -88,6 +88,9 @@
         </div>
       </div>
     </div>
+    <div v-if="$slots.default" class="mt-4 border-t border-default pt-4">
+      <slot />
+    </div>
   </UCard>
 </template>
 

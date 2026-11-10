@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { GroupChallengeStatsApiSchema } from '~~/shared/challenges'
 import { wireDate } from '~~/shared/wireDate'
 
 export const GroupApiSchema = z.object({
@@ -73,6 +74,32 @@ export const GroupUptimeApiSchema = z.object({
 }))
 
 export type GroupUptime = z.infer<typeof GroupUptimeApiSchema>
+
+export const GroupChallengePlaceCountsApiSchema = z.object({
+  time: z.number().int(),
+  duration: z.number().int(),
+  messages: z.number().int()
+}).strict()
+
+export const GroupChallengeOverviewApiSchema = z.object({
+  group_id: z.number(),
+  group_name: z.string(),
+  total_passed_challenges: z.number().int(),
+  first_places: GroupChallengePlaceCountsApiSchema,
+  second_places: GroupChallengePlaceCountsApiSchema,
+  third_places: GroupChallengePlaceCountsApiSchema,
+  challenges_by_status: z.array(GroupChallengeStatsApiSchema)
+}).strict().transform(overview => ({
+  groupId: overview.group_id,
+  groupName: overview.group_name,
+  totalPassedChallenges: overview.total_passed_challenges,
+  firstPlaces: overview.first_places,
+  secondPlaces: overview.second_places,
+  thirdPlaces: overview.third_places,
+  challengesByStatus: overview.challenges_by_status
+}))
+
+export type GroupChallengeOverview = z.infer<typeof GroupChallengeOverviewApiSchema>
 
 export enum OrchestratorStatus {
   ONLINE = 'ONLINE',

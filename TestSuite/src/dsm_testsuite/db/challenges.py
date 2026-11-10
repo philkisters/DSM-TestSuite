@@ -1,13 +1,21 @@
 import logging
 
 from dsm_db import Challenge, Group, Run
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, select, and_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from ..scenario import discover_challenges
-from ..schemas import ChallengeResults, GroupChallengeResult, GroupChallengeStats, GroupChallengeStatsResults
+from ..schemas import (
+    ChallengeResults, 
+    GroupChallengeResult, 
+    GroupChallengeStats, 
+    GroupChallengeStatsResults,
+    CategoryRankings,
+    ChallengeCategoryStats,
+    GroupChallengeOverview,
+)
 from ..schemas import Run as RunSchema
 
 logger = logging.getLogger(__name__)
@@ -140,4 +148,134 @@ def group_challenge_stats(engine: Engine, group_id: int) -> GroupChallengeStatsR
             )
             for r in rows
         ]
+    )
+
+
+def group_challenge_overview(engine: Engine, group_id: int) -> GroupChallengeOverview:
+    """Get comprehensive overview of a group's challenge performance including rankings.
+    
+    Returns:
+        - Total number of challenges passed by the group
+        - Count of first/second/third places across time, duration, and messages categories
+        - Challenge statistics for each challenge
+    """
+    with Session(engine) as session:
+        # Get group name
+        group = session.execute(select(Group).where(Group.id == group_id)).scalar_one_or_none()
+        if not group:
+            raise ValueError(f"Group {group_id} not found")
+        
+        group_name = group.name
+        
+        # Get all non-archived challenges
+        all_challenges = session.scalars(
+            select(Challenge).where(Challenge.archived.is_(False)).order_by(Challenge.key)
+        ).all()
+        
+        # Get stats for each challenge for this group
+        ended = func.coalesce(Run.finished_at, Run.started_at)
+        challenge_stats_rows = session.execute(
+            select(
+                Challenge.id,
+                Challenge.key,
+                Challenge.title,
+                func.count(Run.id).label("tries"),
+                func.count(Run.id).filter(Run.status == "passed").label("successes"),
+                func.min(case((Run.status == "passed", ended))).label("first_pass"),
+                func.max(case((Run.status == "failed", ended))).label("last_fail"),
+            )
+            .select_from(Challenge)
+            .outerjoin(Run, (Run.challenge_id == Challenge.id) & (Run.group_id == group_id))
+            .where(Challenge.archived.is_(False))
+            .group_by(Challenge.id, Challenge.key, Challenge.title)
+            .order_by(Challenge.key)
+        ).all()
+        
+        challenge_stats = [
+            GroupChallengeStats(
+                key=r.key,
+                week=r.key.split('/')[0],
+                title=r.title,
+                tries=r.tries,
+                successes=r.successes,
+                first_pass=r.first_pass,
+                last_fail=r.last_fail,
+            )
+            for r in challenge_stats_rows
+        ]
+        
+        # Count total passed challenges
+        total_passed = sum(1 for stat in challenge_stats if stat.successes > 0)
+        
+        # Get rankings for each category and each challenge
+        first_places = {"time": 0, "duration": 0, "messages": 0}
+        second_places = {"time": 0, "duration": 0, "messages": 0}
+        third_places = {"time": 0, "duration": 0, "messages": 0}
+        
+        for challenge in all_challenges:
+            # Get all passed runs for this challenge
+            passed_runs = session.scalars(
+                select(Run)
+                .where(
+                    and_(
+                        Run.challenge_id == challenge.id,
+                        Run.status == "passed"
+                    )
+                )
+                .order_by(Run.finished_at, Run.id)
+            ).all()
+            
+            if not passed_runs:
+                continue
+            
+            # Determine rankings by time (earliest completion)
+            time_ranked = sorted(passed_runs, key=lambda r: r.finished_at or r.started_at)
+            for idx, run in enumerate(time_ranked[:3]):
+                if run.group_id == group_id:
+                    if idx == 0:
+                        first_places["time"] += 1
+                    elif idx == 1:
+                        second_places["time"] += 1
+                    elif idx == 2:
+                        third_places["time"] += 1
+                    break
+            
+            # Determine rankings by duration (shortest time between start and finish)
+            duration_ranked = sorted(
+                [r for r in passed_runs if r.finished_at is not None],
+                key=lambda r: (r.finished_at - r.started_at).total_seconds()
+            )
+            for idx, run in enumerate(duration_ranked[:3]):
+                if run.group_id == group_id:
+                    if idx == 0:
+                        first_places["duration"] += 1
+                    elif idx == 1:
+                        second_places["duration"] += 1
+                    elif idx == 2:
+                        third_places["duration"] += 1
+                    break
+            
+            # Determine rankings by messages (fewest messages)
+            messages_ranked = sorted(
+                [r for r in passed_runs if r.metrics and "message_count" in r.metrics],
+                key=lambda r: r.metrics.get("message_count", float("inf"))
+            )
+            for idx, run in enumerate(messages_ranked[:3]):
+                if run.group_id == group_id:
+                    if idx == 0:
+                        first_places["messages"] += 1
+                    elif idx == 1:
+                        second_places["messages"] += 1
+                    elif idx == 2:
+                        third_places["messages"] += 1
+                    break
+        
+    return GroupChallengeOverview(
+        group_id=group_id,
+        group_name=group_name,
+        total_passed_challenges=total_passed,
+        first_places=first_places,
+        second_places=second_places,
+        third_places=third_places,
+        challenges_by_status=challenge_stats,
     )

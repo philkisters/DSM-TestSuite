@@ -43,6 +43,13 @@ Start the development server on `http://localhost:3000`:
 pnpm dev
 ```
 
+## Group challenge overview
+
+The backend group service exposes `getGroupChallengeOverview(groupId)` for
+`GET /testsuite/groups/{group_id}/challenge_stats`. It returns camelCase
+challenge statistics and first-, second-, and third-place counts for time,
+duration, and messages; challenge timestamps are parsed as dates.
+
 ## Production
 
 Build the application for production:

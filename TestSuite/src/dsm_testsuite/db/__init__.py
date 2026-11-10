@@ -1,5 +1,5 @@
 from .assertions import get_assertions_for_run, save_assertion
-from .challenges import get_challenge_results_for_group, list_challenges, sync_challenges, group_challenge_stats
+from .challenges import get_challenge_results_for_group, list_challenges, sync_challenges, group_challenge_stats, group_challenge_overview
 from .engine import Engine, make_engine
 from .groups import GroupExists, create_group, delete_group, list_groups
 from .health import (
@@ -34,6 +34,7 @@ __all__ = [
     "get_assertions_for_run",
     "get_challenge_results_for_group",
     "get_run",
+    "group_challenge_overview",
     "group_challenge_stats",
     "insert_run",
     "list_challenges",

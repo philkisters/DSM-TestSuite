@@ -168,3 +168,32 @@ class GroupChallengeStats(BaseModel):
 class GroupChallengeStatsResults(BaseModel):
     group_id: int
     stats: list[GroupChallengeStats] = Field(description="List of all group challenge stats")
+
+
+class CategoryRankings(BaseModel):
+    """Rankings for a specific category (time, duration, messages) across all groups."""
+    first_place: int | None = Field(None, description="Group ID with first place")
+    second_place: int | None = Field(None, description="Group ID with second place")
+    third_place: int | None = Field(None, description="Group ID with third place")
+
+
+class ChallengeCategoryStats(BaseModel):
+    """Statistics for a single challenge in a specific category."""
+    key: str = Field(description="Challenge key")
+    title: str = Field(description="Challenge title")
+    week: str = Field(description="Week extracted from key")
+    passed_count: int = Field(description="Number of groups that passed this challenge")
+    time_rankings: CategoryRankings = Field(description="Rankings for fastest completion")
+    duration_rankings: CategoryRankings = Field(description="Rankings for shortest duration")
+    messages_rankings: CategoryRankings = Field(description="Rankings for fewest messages")
+
+
+class GroupChallengeOverview(BaseModel):
+    """Overview of a group's performance across all challenges."""
+    group_id: int
+    group_name: str
+    total_passed_challenges: int = Field(description="Total number of challenges passed")
+    first_places: dict[str, int] = Field(description="Category (time/duration/messages) -> count")
+    second_places: dict[str, int] = Field(description="Category (time/duration/messages) -> count")
+    third_places: dict[str, int] = Field(description="Category (time/duration/messages) -> count")
+    challenges_by_status: list[GroupChallengeStats] = Field(description="Stats for each challenge")

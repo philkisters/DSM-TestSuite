@@ -10,8 +10,9 @@ from ..db import (
     list_group_health_history,
     list_group_uptime,
     list_groups,
+    group_challenge_overview,
 )
-from ..schemas import Group, GroupCreate, GroupHealthStatus, GroupUptime
+from ..schemas import Group, GroupCreate, GroupHealthStatus, GroupUptime, GroupChallengeOverview
 
 router = APIRouter(prefix="/groups", tags=["groups"])
 
@@ -75,3 +76,10 @@ def get_group_uptime(group_id: int, request: Request):
         uptime_percentage=uptime_seconds / total_seconds * 100 if total_seconds else None,
         downtime_percentage=downtime_seconds / total_seconds * 100 if total_seconds else None,
     )
+
+@router.get("/{group_id}/challenge_stats", response_model=GroupChallengeOverview)
+def get_group_challenge_overview(group_id: int, request: Request):
+    try:
+        return group_challenge_overview(get_engine(request), group_id)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
