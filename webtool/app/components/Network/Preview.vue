@@ -13,7 +13,9 @@ import type { TopologyPeer } from '~/composables/useNetworkTopology'
 const props = withDefaults(defineProps<{
   peers: TopologyPeer[]
   highlight?: string | null
-}>(), { highlight: null })
+  fingers?: string[]
+  imageCounts?: ReadonlyMap<string, number>
+}>(), { highlight: null, fingers: () => [], imageCounts: () => new Map() })
 
 const emit = defineEmits<{
   (e: 'select', peerId: string | null): void
@@ -22,8 +24,16 @@ const emit = defineEmits<{
 const container = ref<HTMLElement | null>(null)
 let cy: Core | null = null
 
+function imageBadge(count: number | undefined): string {
+  const text = count === undefined ? '?' : String(count)
+  const width = 30 + text.length * 14
+  // Lucide's image icon, rendered with the count as a Cytoscape node background.
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="24" viewBox="0 0 ${width} 24"><g fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></g><text x="30" y="18" fill="white" font-family="sans-serif" font-size="18">${text}</text></svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
+
 // Peers that are referenced but not (yet) registered are shown as "unknown".
-function buildElements(peers: TopologyPeer[]): ElementDefinition[] {
+function buildElements(peers: TopologyPeer[], highlight: string | null, fingers: string[]): ElementDefinition[] {
   const nodes = new Map<string, ElementDefinition>()
   const edges = new Map<string, ElementDefinition>()
 
@@ -33,11 +43,11 @@ function buildElements(peers: TopologyPeer[]): ElementDefinition[] {
     if (existing && !known) return
     nodes.set(peerId, {
       group: 'nodes',
-      data: { id: peerId, label, hash: hashId(peerId) },
+      data: { id: peerId, label, hash: hashId(peerId), imageBadge: imageBadge(props.imageCounts.get(peerId)) },
       classes: known ? '' : 'unknown'
     })
   }
-  const addEdge = (peerId: string, neighborId: string, relation: 'successor' | 'predecessor') => {
+  const addEdge = (peerId: string, neighborId: string, relation: 'successor' | 'predecessor' | 'finger') => {
     const id = `${peerId}->${neighborId}:${relation}`
     edges.set(id, {
       group: 'edges',
@@ -55,6 +65,13 @@ function buildElements(peers: TopologyPeer[]): ElementDefinition[] {
     if (p.predecessor) {
       addNode(p.predecessor, false)
       addEdge(p.peerId, p.predecessor, 'predecessor')
+    }
+  }
+  if (highlight && fingers.length) {
+    addNode(highlight, peers.some(p => p.peerId === highlight))
+    for (const finger of fingers) {
+      addNode(finger, false)
+      addEdge(highlight, finger, 'finger')
     }
   }
   return [...nodes.values(), ...edges.values()]
@@ -83,9 +100,9 @@ function ringLayout() {
 }
 
 // Diff against the current graph so existing nodes keep their state and animate.
-function sync(peers: TopologyPeer[]) {
+function sync() {
   if (!cy) return
-  const elements = buildElements(peers)
+  const elements = buildElements(props.peers, props.highlight, props.fingers)
   const wanted = new Set(elements.map(e => e.data.id as string))
   let changed = false
 
@@ -107,6 +124,7 @@ function sync(peers: TopologyPeer[]) {
   })
 
   if (changed) cy.layout(ringLayout()).run()
+  applyHighlight()
 }
 
 function applyHighlight() {
@@ -121,7 +139,7 @@ onMounted(async () => {
 
   cy = cytoscape({
     container: container.value,
-    elements: buildElements(props.peers),
+    elements: buildElements(props.peers, props.highlight, props.fingers),
     minZoom: 0.3,
     maxZoom: 3,
     style: [
@@ -132,9 +150,14 @@ onMounted(async () => {
           'text-wrap': 'wrap',
           'text-valign': 'center',
           'text-halign': 'center',
+          'text-margin-y': -8,
           'font-size': 10,
           'color': '#fff',
           'background-color': '#16a34a',
+          'background-image': 'data(imageBadge)',
+          'background-width': 40,
+          'background-height': 14,
+          'background-position-y': '84%',
           'width': 64,
           'height': 64
         }
@@ -154,7 +177,8 @@ onMounted(async () => {
           'curve-style': 'bezier',
           'control-point-step-size': 40
         }
-      }
+      },
+      { selector: 'edge.finger', style: { 'line-color': '#3b82f6', 'target-arrow-color': '#3b82f6' } }
     ]
   })
 
@@ -166,8 +190,7 @@ onMounted(async () => {
   applyHighlight()
 })
 
-watch(() => props.peers, sync)
-watch(() => props.highlight, applyHighlight)
+watch([() => props.peers, () => props.highlight, () => props.fingers, () => props.imageCounts], sync)
 
 onBeforeUnmount(() => {
   cy?.destroy()

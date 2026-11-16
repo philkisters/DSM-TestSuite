@@ -1,4 +1,60 @@
 import { type NetworkEvent, NetworkEventApiSchema, type NetworkStat, NetworkStatApiSchema } from '~~/shared/network'
+import { AckMessageSchema, ErrorMessageSchema, GetFingersRequestSchema, GetFingersResponseSchema, ListImagesRequestSchema, ListImagesResponseSchema, MessageCode, MessageSchema, PutImageMessageSchema, type Message } from '~~/shared/protocol'
+
+async function sendPeerMessage(request: Message, description: string, signal?: AbortSignal): Promise<Message> {
+  const response = await fetch('/proxy/message', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+    signal
+  })
+  if (!response.ok) throw new Error(`Failed to request ${description} (${response.status})`)
+
+  const message = MessageSchema.parse(await response.json())
+  if (message.sender.network_id !== request.receiver.network_id || message.sender.peer_id !== request.receiver.peer_id
+    || message.receiver.network_id !== request.sender.network_id || message.receiver.peer_id !== request.sender.peer_id) {
+    throw new Error(`${description} response has incorrect sender or receiver`)
+  }
+  if (message.code === MessageCode.ERROR) throw new Error(ErrorMessageSchema.parse(message).content.message)
+  return message
+}
+
+export async function getPeerFingers(networkId: string, peerId: string, signal?: AbortSignal): Promise<string[]> {
+  const request = GetFingersRequestSchema.parse({
+    sender: { network_id: networkId, peer_id: 'Webtool' },
+    receiver: { network_id: networkId, peer_id: peerId },
+    code: MessageCode.GET_FINGERS_REQUEST,
+    content: {}
+  })
+  const message = await sendPeerMessage(request, 'fingers', signal)
+  const fingers = GetFingersResponseSchema.parse(message).content.fingers
+  if (fingers.some(finger => finger.network_id !== networkId)) {
+    throw new Error('Finger belongs to a different network')
+  }
+  return [...new Set(fingers.map(finger => finger.peer_id))]
+}
+
+export async function getPeerImages(networkId: string, peerId: string, signal?: AbortSignal): Promise<string[]> {
+  const request = ListImagesRequestSchema.parse({
+    sender: { network_id: networkId, peer_id: 'Webtool' },
+    receiver: { network_id: networkId, peer_id: peerId },
+    code: MessageCode.LIST_IMAGE_REQUEST,
+    content: {}
+  })
+  const message = await sendPeerMessage(request, 'images', signal)
+  return ListImagesResponseSchema.parse(message).content.images
+}
+
+export async function putPeerImage(networkId: string, peerId: string, imageId: string, image: string): Promise<void> {
+  const request = PutImageMessageSchema.parse({
+    sender: { network_id: networkId, peer_id: 'Webtool' },
+    receiver: { network_id: networkId, peer_id: peerId },
+    code: MessageCode.PUT_IMAGE,
+    content: { image_id: imageId, image }
+  })
+  const message = await sendPeerMessage(request, 'put image')
+  AckMessageSchema.parse(message)
+}
 
 export async function   getNetworks(): Promise<NetworkStat[]> {
   const response = await fetch('/proxy/networks')

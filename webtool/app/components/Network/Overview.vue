@@ -6,7 +6,12 @@
         <div class="text-center text-lg">
           Network <span class="font-mono">{{ networkId }}</span>
         </div>
-        <div class="flex-1 flex justify-end">
+        <div class="flex-1 flex justify-end gap-2">
+          <NetworkImageModal
+            :network-id="networkId"
+            :peers="peers"
+            :selected-peer="selectedPeer"
+          />
           <NetworkJoinModal
             :network-id="networkId"
             :peers="peers"
@@ -17,6 +22,8 @@
       <NetworkPreview
         :peers="peers"
         :highlight="selectedPeer"
+        :fingers="fingers"
+        :image-counts="imageCounts"
         class="flex-1 min-h-0"
         @select="selectedPeer = $event"
       />
@@ -45,36 +52,57 @@
           Select a peer in the network to see its details.
         </div>
         <template v-else>
-          <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 py-2 overflow-auto">
-            <dt class="text-muted">
-              Peer
-            </dt>
-            <dd class="font-mono truncate">
-              {{ selectedPeerInfo?.peerId ?? selectedPeer }}
-            </dd>
-            <dt class="text-muted">
-              Hash
-            </dt>
-            <dd class="font-mono">
-              {{ selectedPeerInfo?.hash ?? '-' }}
-            </dd>
-            <dt class="text-muted">
-              Status
-            </dt>
-            <dd>{{ selectedPeerInfo ? 'Active' : 'Unknown' }}</dd>
-            <dt class="text-muted">
-              Successor
-            </dt>
-            <dd class="font-mono truncate">
-              {{ selectedPeerInfo?.successor ?? '-' }}
-            </dd>
-            <dt class="text-muted">
-              Predecessor
-            </dt>
-            <dd class="font-mono truncate">
-              {{ selectedPeerInfo?.predecessor ?? '-' }}
-            </dd>
-          </dl>
+          <div class="min-h-0 flex-1 overflow-y-auto">
+            <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 py-2">
+              <dt class="text-muted">
+                Peer
+              </dt>
+              <dd class="font-mono truncate">
+                {{ selectedPeerInfo?.peerId ?? selectedPeer }}
+              </dd>
+              <dt class="text-muted">
+                Hash
+              </dt>
+              <dd class="font-mono">
+                {{ selectedPeerInfo?.hash ?? '-' }}
+              </dd>
+              <dt class="text-muted">
+                Status
+              </dt>
+              <dd>{{ selectedPeerInfo ? 'Active' : 'Unknown' }}</dd>
+              <dt class="text-muted">
+                Successor
+              </dt>
+              <dd class="font-mono truncate">
+                {{ selectedPeerInfo?.successor ?? '-' }}
+              </dd>
+              <dt class="text-muted">
+                Predecessor
+              </dt>
+              <dd class="font-mono truncate">
+                {{ selectedPeerInfo?.predecessor ?? '-' }}
+              </dd>
+            </dl>
+            <div class="text-muted pt-2">
+              Images
+            </div>
+            <div v-if="selectedImages === undefined" class="text-muted py-2">
+              Images not loaded.
+            </div>
+            <div v-else-if="!selectedImages.length" class="text-muted py-2">
+              No images.
+            </div>
+            <ul v-else class="space-y-2 py-2">
+              <li v-for="(image, index) in selectedImages" :key="index">
+                <div class="font-mono break-all">
+                  {{ image.id }}
+                </div>
+                <div class="font-mono text-muted text-xs break-all">
+                  {{ image.hash }}
+                </div>
+              </li>
+            </ul>
+          </div>
           <div class="flex gap-2 pt-2">
             <UButton
               color="warning"
@@ -100,8 +128,9 @@
 </template>
 
 <script setup lang="ts">
-import { subscribeToNetworkEvents } from '~~/app/services/backend/proxy.service'
+import { getPeerFingers, subscribeToNetworkEvents } from '~~/app/services/backend/proxy.service'
 import { activeOrchestrator } from '~~/app/services/backend/orchestrator.service'
+import { hashId } from '~/composables/useHash'
 import type { NetworkEvent } from '~~/shared/network'
 
 const props = defineProps<{
@@ -112,6 +141,15 @@ const emit = defineEmits<{ empty: [] }>()
 const settings = useSettingsStore()
 const networkEvents = shallowRef<NetworkEvent[]>([])
 const selectedPeer = ref<string | null>(null)
+const fingers = ref<string[]>([])
+const peerImages = usePeerImages(toRef(() => props.networkId), selectedPeer)
+const imageCounts = computed(() => new Map(
+  Array.from(peerImages.value, ([peer, images]) => [peer, images.length])
+))
+const selectedImages = computed(() => {
+  const images = selectedPeer.value ? peerImages.value.get(selectedPeer.value) : undefined
+  return images?.map(id => ({ id, hash: hashId(id) }))
+})
 const { peers, pushAll } = useNetworkTopology()
 const selectedPeerInfo = computed(() => peers.value.find(p => p.peerId === selectedPeer.value) ?? null)
 const visibleEvents = computed(() => {
@@ -120,6 +158,30 @@ const visibleEvents = computed(() => {
   return networkEvents.value.filter(e => e.type === 'message' && (e.src === peer || e.dst === peer))
 })
 const busy = ref<'leave' | 'kill' | null>(null)
+
+watch([() => props.networkId, selectedPeer], async ([networkId, peerId], _previous, onCleanup) => {
+  fingers.value = []
+  if (!peerId) return
+
+  const controller = new AbortController()
+  let active = true
+  onCleanup(() => {
+    active = false
+    controller.abort()
+  })
+  try {
+    const result = await getPeerFingers(networkId, peerId, controller.signal)
+    if (active) fingers.value = result
+  } catch (e) {
+    if (active) {
+      useToast().add({
+        title: 'Failed to load fingers',
+        description: e instanceof Error ? e.message : String(e),
+        color: 'error'
+      })
+    }
+  }
+}, { flush: 'sync' })
 
 async function run(action: 'leave' | 'kill') {
   if (!selectedPeer.value || busy.value) return

@@ -34,16 +34,15 @@
               placeholder="peer-2"
             />
             <template #help>
-              Hash:
-              <span class="font-mono text-primary">{{ peerHash }}</span>
+              <UtilHashHint :value="peerId.trim()" />
             </template>
           </UFormField>
           <UFormField label="Bootstrap peer (optional)">
-            <USelect
+            <NetworkPeerSelect
               v-model="bootstrapPeerId"
-              :items="bootstrapItems"
+              :peers="peers"
+              :none-value="NONE"
               placeholder="None"
-              class="w-full"
             />
           </UFormField>
           <UButton
@@ -76,18 +75,9 @@ const bootstrapPeerId = ref<string>(NONE)
 const loading = ref(false)
 const open = ref(false)
 
-const { shortHash } = useHash()
-const peerHash = computed(() => peerId.value.trim() ? shortHash(peerId.value.trim()) : '-')
-
-const bootstrapItems = computed(() => [
-  { label: 'None', value: NONE },
-  ...props.peers.map(p => ({ label: p.peerId, value: p.peerId }))
-])
-
 function getRandomBootstrap() {
-  if (bootstrapItems.value.length === 0) return NONE
-  const randomIndex = Math.floor(Math.random() * (bootstrapItems.value.length - 1)) + 1 // pick one at random but not NONE
-  return bootstrapItems.value[randomIndex]!.value
+  if (!props.peers.length) return NONE
+  return props.peers[Math.floor(Math.random() * props.peers.length)]!.peerId
 }
 
 async function submit() {

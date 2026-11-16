@@ -57,6 +57,23 @@ group list loads. If no group is saved, or the saved group is no longer in the
 list, the group selector is shown. Clicking the active group in the header
 clears the selection and opens the selector again.
 
+## Network fingers
+
+Selecting a peer requests its finger table through the proxy. The network view
+shows a blue arrow to each distinct finger destination, including the peer itself
+or an unregistered peer. Select another peer or the background to clear the arrows;
+select the peer again to refresh its table.
+
+The view also requests the selected peer's image list. Each node shows an image
+icon and its last known count, or `?` until a request succeeds. Counts remain
+visible when selecting other peers and are refreshed when a peer is selected again.
+Peer Details lists the selected peer's last known image IDs and their SHA-256 hashes.
+
+Use **Put image** to select a peer, choose a PNG, and preview and send it. The
+image ID defaults to the filename and shows its shortened hash; it can be edited.
+An acknowledgement means the peer accepted the message; forwarding or storage may
+still be in progress.
+
 ## Production
 
 Build the application for production:
