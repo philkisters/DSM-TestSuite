@@ -133,6 +133,8 @@ class RunManager:
                     network_id=run.network_id,
                     orchestrator=OrchestratorClient(vm_ip, run.network_id, http),
                     proxy=ProxyClient(settings.proxy_admin_url, run.network_id, http),
+                    check_fingers=scenario.check_fingers,
+                    check_images=scenario.check_images,
                 )
                 try:
                     status = await execute_scenario(scenario, ctx, report)

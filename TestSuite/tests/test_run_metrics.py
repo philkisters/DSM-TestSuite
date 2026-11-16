@@ -45,6 +45,39 @@ def test_message_count_is_fetched_before_client_closes(monkeypatch, status):
     assert run.finished_at is not None
 
 
+def test_scenario_image_and_finger_checks_are_passed_to_step_context(monkeypatch):
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        runs.httpx,
+        "AsyncClient",
+        lambda **kwargs: real_client(
+            transport=httpx.MockTransport(
+                lambda _request: httpx.Response(200, json={"count": 0})
+            ),
+            **kwargs,
+        ),
+    )
+    observed_flags = []
+
+    async def execute_scenario(scenario, ctx, report):
+        observed_flags.append((ctx.check_fingers, ctx.check_images))
+        return RunStatus.PASSED
+
+    monkeypatch.setattr(runs, "execute_scenario", execute_scenario)
+    manager = runs.RunManager(None)
+    run = Run(group_id=1, challenge_id=1, network_id="net-test")
+    scenario = Scenario(
+        name="test",
+        check_fingers=True,
+        check_images=True,
+        steps=[],
+    )
+
+    asyncio.run(manager._execute(run, scenario, "127.0.0.1"))
+
+    assert observed_flags == [(True, True)]
+
+
 @pytest.mark.parametrize("scenario_crashes", [False, True])
 def test_message_count_failure_is_logged_and_status_is_preserved(monkeypatch, caplog, scenario_crashes):
     updates = []

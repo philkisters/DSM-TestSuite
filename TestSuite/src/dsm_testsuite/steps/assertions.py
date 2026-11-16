@@ -271,7 +271,7 @@ class ImageList(_PeerStep, _ImagesStep):
 
 @assertion("valid-network")
 class ValidNetwork(_TimeoutStep):
-    """Every peer of the simulated network reports the neighbors and fingers the model expects."""
+    """Every peer reports the expected neighbors, fingers, and optionally owned images."""
 
     timeout: float = Field(default=30, ge=0)
 
@@ -279,14 +279,23 @@ class ValidNetwork(_TimeoutStep):
         async def check() -> None:
             errors: list[str] = []
             for peer in ctx.model.names():
+                peer_errors: list[str] = []
                 try:
                     await _check_neighbors(ctx, peer, ctx.model.successor(peer), ctx.model.predecessor(peer))
-                    if (ctx.check_fingers):
-                        await _check_fingers(ctx, peer, ctx.model.fingers(peer))
-                    if (ctx.check_images):
-                        await _check_images(ctx, peer, ctx.model.images(peer))
                 except AssertionFailed as exc:
-                    errors.append(str(exc))
+                    peer_errors.append(str(exc))
+                if ctx.check_fingers:
+                    try:
+                        await _check_fingers(ctx, peer, ctx.model.fingers(peer))
+                    except AssertionFailed as exc:
+                        peer_errors.append(str(exc))
+                if ctx.check_images:
+                    try:
+                        await _check_images(ctx, peer, ctx.model.images(peer))
+                    except AssertionFailed as exc:
+                        peer_errors.append(str(exc))
+                if peer_errors:
+                    errors.append(" | ".join(peer_errors))
             if errors:
                 raise AssertionFailed(f"network is not valid ({len(errors)} peer(s) wrong): " + " | ".join(errors))
 
