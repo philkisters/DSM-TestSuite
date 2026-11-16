@@ -15,45 +15,34 @@
   </div>
   <div
     v-else-if="overview"
-    class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm tabular-nums"
   >
+  <div v-if="!showPlacementDetailed" class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm tabular-nums cursor-pointer" @click="showPlacementDetailed = true">
+    <UIcon name="lucide-chevron-down" class="rotate-270" />
     <span :aria-label="`${overview.totalPassedChallenges} of ${overview.challengesByStatus.length} challenges passed`">
       {{ overview.totalPassedChallenges }} / {{ overview.challengesByStatus.length }} passed
     </span>
-    <span
-      class="flex items-center gap-1"
-      :aria-label="`${sumPlaces(overview.firstPlaces)} first places`"
-    >
-      <UIcon
-        name="lucide-trophy"
-        class="size-5 text-amber-500"
-        aria-hidden="true"
-      />
-      {{ sumPlaces(overview.firstPlaces) }}
-    </span>
-    <span
-      class="flex items-center gap-1"
-      :aria-label="`${sumPlaces(overview.secondPlaces)} second places`"
-    >
-      <UIcon
-        name="lucide-star"
-        class="size-5 text-gray-400"
-        aria-hidden="true"
-      />
-      {{ sumPlaces(overview.secondPlaces) }}
-    </span>
-    <span
-      class="flex items-center gap-1"
-      :aria-label="`${sumPlaces(overview.thirdPlaces)} third places`"
-    >
-      <UIcon
-        name="lucide-star"
-        class="size-5 text-amber-700"
-        aria-hidden="true"
-      />
-      {{ sumPlaces(overview.thirdPlaces) }}
-    </span>
+    <GroupChallengeRow :first="sumPlaces(overview.firstPlaces)" :second="sumPlaces(overview.secondPlaces)" :third="sumPlaces(overview.thirdPlaces)" />
   </div>
+  <div v-if="showPlacementDetailed" class="flex align-top justify-between gap-x-4 cursor-pointer" @click="showPlacementDetailed = false">
+    <div>
+        <UIcon name="lucide-chevron-down" />
+    </div>
+    <div class="flex flex-col">
+      <div class="flex gap-x-2 justify-between items-center align-center">
+        <UIcon name="lucide-clock" class="size-5 mr-4" />
+        <GroupChallengeRow :first="overview.firstPlaces.time" :second="overview.secondPlaces.time" :third="overview.thirdPlaces.time" />
+      </div>
+      <div class="flex gap-x-2 justify-between items-center align-center my-2">
+        <UIcon name="lucide-mail" class="size-5 mr-4" /> 
+        <GroupChallengeRow :first="overview.firstPlaces.messages" :second="overview.secondPlaces.messages" :third="overview.thirdPlaces.messages" />
+      </div>  
+      <div class="flex gap-x-2 justify-between items-center align-center">
+        <UIcon name="lucide-hourglass" class="size-5 mr-4" />
+        <GroupChallengeRow :first="overview.firstPlaces.duration" :second="overview.secondPlaces.duration" :third="overview.thirdPlaces.duration" />
+      </div>
+    </div>
+  </div>  
+</div>
 </template>
 
 <script setup lang="ts">
@@ -66,6 +55,7 @@ const props = defineProps<{ groupId: number }>()
 const overview = ref<GroupChallengeOverview | null>(null)
 const isLoading = ref(true)
 const error = ref<string | null>(null)
+const showPlacementDetailed = ref(false)
 
 onMounted(() => {
   watch(() => props.groupId, (groupId, _previousId, onCleanup) => {
