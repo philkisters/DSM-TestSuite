@@ -183,12 +183,13 @@ async def _check_images(ctx: StepContext, peer: str, expected: list[str]) -> Non
     except AssertionFailed as exc:
         raise AssertionFailed(f"failed to list images for {peer!r}: {exc!r}") from exc
 
-    bad = [i for i, (e, a) in enumerate(zip(expected, images)) if e != a]
-    if bad:
-        first = bad[0]
+    expected_images = set(expected)
+    actual_images = set(images)
+    if expected_images != actual_images:
+        missing = sorted(expected_images - actual_images)
+        unexpected = sorted(actual_images - expected_images)
         raise AssertionFailed(
-            f"image list of {peer!r} is wrong at {len(bad)} of {len(expected)} entries "
-            f"(indices {_ranges(bad)}); e.g. image {first} should be {expected[first]!r}, got {images[first]!r}"
+            f"image list of {peer!r} is wrong: missing {missing}, unexpected {unexpected}"
         )
         
 async def _list_images(ctx: StepContext, peer: str) -> list[str]:
