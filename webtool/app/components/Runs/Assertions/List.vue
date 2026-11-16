@@ -5,9 +5,9 @@
 </template>
 
 <script setup lang="ts">
-import type { RunAssertion } from '~~/shared/run'
+import type { RunEventResult } from '~~/shared/run'
 
 const props = defineProps<{
-  assertions: RunAssertion[]
+  assertions: RunEventResult[]
 }>()
 </script>

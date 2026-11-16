@@ -1,9 +1,43 @@
 """HTTP clients for a group's Orchestrator (always port 9090) and the shared Proxy."""
+import base64
 import httpx
+from pathlib import Path
 
 from dsm_protocol import Message, Identity, MessageCode
 
 ORCHESTRATOR_PORT = 9090
+CHALLENGES_IMAGES_DIR = Path(__file__).parent.parent.parent / "Challenges" / "images"
+
+
+class HTTPError(Exception):
+    """An HTTP request to Orchestrator or Proxy failed with an error status code."""
+
+    def __init__(self, status_code: int | None, message: str) -> None:
+        self.status_code = status_code
+        self.message = message
+        super().__init__(message)
+
+
+def _load_image_as_base64(image_id: str) -> str:
+    """Load an image from Challenges/images and encode it as base64.
+    
+    Args:
+        image_id: Image filename (e.g., "image-0.png")
+    
+    Returns:
+        Base64 encoded image data
+        
+    Raises:
+        FileNotFoundError: If the image file doesn't exist
+    """
+    image_path = CHALLENGES_IMAGES_DIR / image_id
+    if not image_path.exists():
+        raise FileNotFoundError(f"Image not found: {image_path}")
+    
+    with open(image_path, "rb") as f:
+        image_data = f.read()
+    
+    return base64.b64encode(image_data).decode("utf-8")
 
 
 class ClientError(Exception):
@@ -16,7 +50,7 @@ async def _request(client: httpx.AsyncClient, method: str, url: str, **kwargs) -
     except httpx.HTTPError as exc:
         raise ClientError(f"{method} {url} failed: {exc!r}") from exc
     if response.is_error:
-        raise ClientError(f"{method} {url} returned {response.status_code}: {response.text}")
+        raise HTTPError(response.status_code, f"{method} {url} returned {response.status_code}: {response.text}")
     return response
 
 
@@ -120,8 +154,6 @@ class ProxyClient:
             f"{self.base_url}/api/message", 
             json=message.to_json(),
         )
-        if response.is_error:
-            raise ClientError(f"POST {self.base_url}/api/message returned {response.status_code}: {response.text}")
         
         return Message.from_json(response.json())
 
@@ -157,3 +189,56 @@ class ProxyClient:
         )
         
         return await self._send_message(message)
+    
+    async def send_list_images_message(self, peer_name: str) -> Message:
+        message = Message(
+            sender=Identity(
+                network_id=self.network_id,
+                peer_id='TestSuite',
+            ),
+            receiver=Identity(
+                network_id=self.network_id,
+                peer_id=peer_name,
+            ),
+            code=MessageCode.LIST_IMAGE_REQUEST,
+            content={}
+        )
+    
+        return await self._send_message(message)
+
+    async def send_put_image_message(self, peer_name: str, image: str) -> Message:
+        image_base64 = _load_image_as_base64(image)
+        
+        message = Message(
+            sender=Identity(
+                network_id=self.network_id,
+                peer_id='TestSuite',
+            ),
+            receiver=Identity(
+                network_id=self.network_id,
+                peer_id=peer_name,
+            ),
+            code=MessageCode.PUT_IMAGE,
+            content={"image": image_base64, "image_id": image}
+        )
+
+        return await self._send_message(message)
+
+    async def put_images(self, peer_name: str, image_ids: list[str]) -> None:
+        """Send multiple images to a peer, each as a base64 encoded string.
+        
+        Args:
+            peer_name: Name of the peer to send images to
+            image_ids: List of image filenames to send (e.g., ["image-0.png", "image-1.png"])
+        
+        Raises:
+            ClientError: If any image fails to send
+        """
+        for image_id in image_ids:
+            try:
+                response = await self.send_put_image_message(peer_name, image_id)
+                if response.code != MessageCode.ACK:
+                    raise ClientError(f"Failed to send image {image_id!r} to {peer_name!r}: {response.content.get('message')}")
+                
+            except Exception as exc:
+                raise ClientError(f"Failed to send image {image_id!r} to {peer_name!r}: {exc!r}") from exc

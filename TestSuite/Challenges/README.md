@@ -47,10 +47,10 @@ This should start a peer with that name and also that peer should register to th
 Requires `peer-names` (list) and optionally `timeout` (seconds, default 5). Starts and joins each peer sequentially: the first joins without a bootstrap peer, every following one bootstraps via the previous peer. Waits `timeout` seconds between joins.
 
 #### Destroy Network
-Takes no parameters. Sends a kill command to every peer started during the run. Peers are also killed automatically when a run ends, so this is only needed to tear down mid-challenge.
+Takes no parameters. Sends a kill command to every peer started during the run. The model removes images owned by each killed peer. Peers are also killed automatically when a run ends, so this is only needed to tear down mid-challenge.
 
 #### Stop Peer
-Requires a `peer-name`. This stops an already existing peer via the orchestrator. After before stopping it should undregister from the `Proxy`, but doesn't `leave` the P2P network (See `leave-peer`) 
+Requires a `peer-name`. This kills an existing peer via the orchestrator without a graceful `leave-peer`. The model removes the images owned by that peer, simulating their loss.
 
 ### Assertions
 Assertions check for specific state within the network. For this the TestSuite checks with the `Proxy` the current state of the network and might also send a message and investigate the result of that message. 

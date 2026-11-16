@@ -1,6 +1,7 @@
-from .assertions import get_assertions_for_run, save_assertion
+from .assertions import get_assertions_for_run, get_events_for_run, save_assertion
 from .challenges import get_challenge_results_for_group, list_challenges, sync_challenges, group_challenge_stats, group_challenge_overview
 from .engine import Engine, make_engine
+from .errors import get_errors_for_run, save_error
 from .groups import GroupExists, create_group, delete_group, list_groups
 from .health import (
     calculate_group_uptime,
@@ -33,6 +34,8 @@ __all__ = [
     "find_run_targets",
     "get_assertions_for_run",
     "get_challenge_results_for_group",
+    "get_errors_for_run",
+    "get_events_for_run",
     "get_run",
     "group_challenge_overview",
     "group_challenge_stats",
@@ -47,6 +50,7 @@ __all__ = [
     "list_runs_for_group",
     "make_engine",
     "save_assertion",
+    "save_error",
     "save_group_health",
     "sync_challenges",
     "update_run",

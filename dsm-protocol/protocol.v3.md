@@ -47,14 +47,16 @@ They are named image-X.png where X is a number between 0 and 6079, both included
 
 ### Putting an image
 To put an image the image Id is hashed and put onto any peer.
-Peers should accept every image and send an acknowlegement. 
-If an image hash is smaller between this peer and its predecessor, this peer is responsible and stores the image.
-Otherwise, the image should be forwarded to another (better matching) peer.
+Peers acknowledge a valid image immediately, without waiting for forwarding or
+storage by other peers. Forwarding happens independently; an acknowledgement
+does not guarantee that the image has reached its responsible peer.
+If the image's ring key is in the interval `(predecessor, this peer]`, this peer is responsible and stores the image.
+Otherwise, it forwards the image to the predecessor or successor in the direction of the image's ring key.
 This way images should be distributed evenly accross the network.
 
 ### Searching an Image
-To search an image the searching should hash the searched image id and traverse the ring to the correct peer. It can then first list the images available on that peer, to see if that image exists. Otherwise it can also directly request the image. 
-If the image exists, it should receive the image. Otherwise a peer will send an error response.
+To search an image, the requester hashes the searched image ID and traverses the ring to the responsible peer. It can list the images available on that peer or request the image directly.
+A peer answers a `RequestImage` only from its local storage: it returns the image in a `PutImage` response if present, or an `Error` response if the image is not stored locally.
 
 ## Base Message Structure
 ```json
@@ -200,7 +202,7 @@ The response message reverses the sender and receiver and is send via the same T
 {
     ...
     "content": {
-      "imageId": "image-id",
+      "image_id": "image-id",
       "image": "base64 encoded image"
     }
 }
@@ -233,7 +235,7 @@ The response message reverses the sender and receiver and is send via the same T
 {
     ...
     "content": {
-      "imageId": "searched-image-id"
+      "image_id": "searched-image-id"
     }
 }
 ```

@@ -61,6 +61,19 @@ class RunAssertion(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class RunError(Base):
+    __tablename__ = "run_errors"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    step_index: Mapped[int]
+    name: Mapped[str] = mapped_column(Text)
+    params: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    error_code: Mapped[int | None] = mapped_column()
+    error_text: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Achievement(Base):
     __tablename__ = "achievements"
 

@@ -11,12 +11,22 @@ class ChordModel:
     def __init__(self) -> None:
         # Sorted by (hash, name), the same order as `Identity.ring_key`.
         self._ring: list[tuple[int, str]] = []
+        self._images: set[str] = set()
+
+    def store_image(self, image: str) -> None:
+        self._images.add(image)
 
     def join(self, name: str) -> None:
         entry = (hash_id(name), name)
         if entry not in self._ring:
             self._ring.append(entry)
             self._ring.sort()
+
+    def stop(self, name: str) -> None:
+        """Remove a peer and the images lost with it."""
+        if name in self:
+            self._images.difference_update(self.images(name))
+        self.leave(name)
 
     def leave(self, name: str) -> None:
         self._ring = [e for e in self._ring if e[1] != name]
@@ -47,3 +57,12 @@ class ChordModel:
         """Finger i is the first peer at or after (hash(name) + 2^i) mod 2^256."""
         base = hash_id(name)
         return [self.successor_of_key(base + (1 << i)) for i in range(ID_BITS)]
+
+    def images(self, name: str) -> list[str]:
+        """Return images assigned to the peer by the current ring."""
+        index = self._index(name)
+        return sorted(
+            image
+            for image in self._images
+            if bisect_left(self._ring, (hash_id(image), image)) % len(self._ring) == index
+        )

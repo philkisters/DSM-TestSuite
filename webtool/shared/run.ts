@@ -66,6 +66,77 @@ export const RunAssertionSchema = z.object({
 export type RunAssertion = z.infer<typeof RunAssertionSchema>
 export type RunAssertionInput = z.input<typeof RunAssertionSchema>
 
+export const RunErrorSchema = z.object({
+  id: z.number(),
+  run_id: z.string(),
+  step_index: z.number(),
+  name: z.string(),
+  params: z.record(z.string(), z.unknown()).nullish(),
+  error_code: z.number().nullish(),
+  error_text: z.string(),
+  created_at: wireDate,
+}).transform((e) => ({
+  id: e.id,
+  runId: e.run_id,
+  stepIndex: e.step_index,
+  name: e.name,
+  params: e.params ?? undefined,
+  errorCode: e.error_code ?? undefined,
+  errorText: e.error_text,
+  createdAt: e.created_at,
+}))
+
+export type RunError = z.infer<typeof RunErrorSchema>
+export type RunErrorInput = z.input<typeof RunErrorSchema>
+
+export const RunEventResultSchema = z.discriminatedUnion('type', [
+  z.object({
+    id: z.number(),
+    run_id: z.string(),
+    step_index: z.number(),
+    name: z.string(),
+    params: z.record(z.string(), z.unknown()).nullish(),
+    created_at: wireDate,
+    type: z.literal('assertion'),
+    passed: z.boolean(),
+    message: z.string().nullish(),
+    error_code: z.null(),
+    error_text: z.null(),
+  }),
+  z.object({
+    id: z.number(),
+    run_id: z.string(),
+    step_index: z.number(),
+    name: z.string(),
+    params: z.record(z.string(), z.unknown()).nullish(),
+    created_at: wireDate,
+    type: z.literal('error'),
+    passed: z.null(),
+    message: z.string().nullish(),
+    error_code: z.number().nullish(),
+    error_text: z.string(),
+  }),
+]).transform((e) => ({
+  id: e.id,
+  runId: e.run_id,
+  stepIndex: e.step_index,
+  name: e.name,
+  params: e.params ?? undefined,
+  createdAt: e.created_at,
+  type: e.type,
+  ...(e.type === 'assertion' && {
+    passed: e.passed,
+    message: e.message ?? undefined,
+  }),
+  ...(e.type === 'error' && {
+    errorCode: e.error_code ?? undefined,
+    errorText: e.error_text,
+  }),
+}))
+
+export type RunEventResult = z.infer<typeof RunEventResultSchema>
+export type RunEventResultInput = z.input<typeof RunEventResultSchema>
+
 export const RunEventStepDataSchema = z.object({
   index: z.number(),
   kind: z.enum(['action', 'assert']),

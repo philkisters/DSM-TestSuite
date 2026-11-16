@@ -9,6 +9,9 @@ from .registry import action
 
 class _PeerStep(Step):
     peer_name: str = Field(alias="peer-name")
+    
+class _ImageStep(Step):
+    image_id: list[str] = Field(alias="images")
 
 
 @action("start-peer")
@@ -39,8 +42,14 @@ class StopPeer(_PeerStep):
     async def execute(self, ctx: StepContext) -> None:
         await ctx.orchestrator.kill(self.peer_name)
         ctx.started_peers.discard(self.peer_name)
-        ctx.model.leave(self.peer_name)
+        ctx.model.stop(self.peer_name)
 
+@action("put-images")
+class PutImages(_PeerStep, _ImageStep):
+    async def execute(self, ctx: StepContext) -> None:
+        await ctx.proxy.put_images(self.peer_name, self.image_id)
+        for image in self.image_id:
+            ctx.model.store_image(image)
 
 @action("setup-network")
 class SetupNetwork(Step):
@@ -60,6 +69,28 @@ class SetupNetwork(Step):
             ctx.model.join(name)
             bootstrap = name
 
+@action("join-peers")
+class JoinPeers(Step):
+    """Adds more peers to an existing network. join via a random existing peer."""
+
+    peer_names: list[str] = Field(alias="peer-names", min_length=1)
+    timeout: float = Field(default=5, ge=0)
+
+    async def execute(self, ctx: StepContext) -> None:
+        import random
+        existing_peers = list(ctx.started_peers)
+        if not existing_peers:
+            raise RuntimeError("No existing peers to join via")
+        bootstrap = random.choice(existing_peers)
+        for index, name in enumerate(self.peer_names):
+            if index:
+                await asyncio.sleep(self.timeout)
+            await ctx.orchestrator.start(name)
+            ctx.started_peers.add(name)
+            await ctx.orchestrator.join(name, bootstrap)
+            ctx.model.join(name)
+    
+
 
 @action("destroy-network")
 class DestroyNetwork(Step):
@@ -69,7 +100,7 @@ class DestroyNetwork(Step):
         for name in sorted(ctx.started_peers):
             await ctx.orchestrator.kill(name)
             ctx.started_peers.discard(name)
-            ctx.model.leave(name)
+            ctx.model.stop(name)
 
 
 @action("wait")

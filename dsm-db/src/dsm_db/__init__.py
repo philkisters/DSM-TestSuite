@@ -1,4 +1,4 @@
-from .models import Achievement, Base, Challenge, Group, GroupAchievement, GroupHealth, Run, RunAssertion
+from .models import Achievement, Base, Challenge, Group, GroupAchievement, GroupHealth, Run, RunAssertion, RunError
 
 __all__ = [
     "Achievement",
@@ -9,4 +9,5 @@ __all__ = [
     "GroupHealth",
     "Run",
     "RunAssertion",
+    "RunError",
 ]

@@ -1,5 +1,6 @@
 .venv/
 Challenges/**/*.yml
+Challenges/**/*.png
 __pycache__/
 *.py[cod]
 .pytest_cache/

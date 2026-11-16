@@ -1,4 +1,4 @@
-import { RunApiSchema, RunEventApiSchema, RunAssertionSchema, type Run, type RunEvent, type RunAssertion } from '~~/shared/run'
+import { RunApiSchema, RunEventApiSchema, RunAssertionSchema, RunEventResultSchema, type Run, type RunEvent, type RunAssertion, type RunEventResult } from '~~/shared/run'
 
 export async function createRun(groupId: number, challengeId: number): Promise<Run> {
   const response = await fetch('/testsuite/runs', {
@@ -13,13 +13,13 @@ export async function createRun(groupId: number, challengeId: number): Promise<R
   return RunApiSchema.parse(await response.json())
 }
 
-export async function getRunAssertions(runId: string): Promise<RunAssertion[]> {
+export async function getRunAssertions(runId: string): Promise<RunEventResult[]> {
   const response = await fetch(`/testsuite/runs/${runId}/events`)
   if (!response.ok) {
     const body = await response.json().catch(() => null)
     throw new Error(body?.detail ?? `Failed to get run events (${response.status})`)
   }
-  return (await response.json()).map((assertion: unknown) => RunAssertionSchema.parse(assertion))
+  return (await response.json()).map((event: unknown) => RunEventResultSchema.parse(event))
 }
 
 

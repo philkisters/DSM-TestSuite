@@ -9,7 +9,7 @@ from threading import Lock
 
 import httpx
 
-from .db import Engine, insert_run, update_run, update_run_peers, save_assertion
+from .db import Engine, insert_run, update_run, update_run_peers, save_assertion, save_error
 from .clients import ClientError, OrchestratorClient, ProxyClient
 from .config import settings
 from .executor import execute_scenario
@@ -100,7 +100,7 @@ class RunManager:
         persisted_peers: list[str] = []
         message_count: int | None = None
 
-        async def report(index: int, step: dict, passed: bool, message: str | None) -> None:
+        async def report(index: int, step: dict, passed: bool, message: str | None, http_status_code: int | None) -> None:
             peers = sorted(ctx.started_peers)
             if peers != persisted_peers:
                 persisted_peers[:] = peers
@@ -108,6 +108,11 @@ class RunManager:
             if step["kind"] == "assert":
                 await self._persist(
                     save_assertion, run.id, index, step["name"], step["params"], passed, message
+                )
+            elif not passed:
+                # Save error for any failed action step (regardless of http_status_code)
+                await self._persist(
+                    save_error, run.id, index, step["name"], step["params"], http_status_code, message
                 )
             self.publish(
                 RunEvent(

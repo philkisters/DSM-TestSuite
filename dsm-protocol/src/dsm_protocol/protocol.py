@@ -1,4 +1,4 @@
-"""Wire format of the P2P protocol (newline-delimited JSON, see protocol.md)."""
+"""Wire format of the P2P protocol (newline-delimited JSON, see protocol.v3.md)."""
 
 from __future__ import annotations
 

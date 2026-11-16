@@ -3,12 +3,12 @@ from fastapi import APIRouter, Request, HTTPException, WebSocket, WebSocketDisco
 from pydantic import ValidationError
 
 from ..db import (
-    find_run_targets, get_assertions_for_run, list_runs as list_runs_from_db, get_run as get_run_from_db, list_runs_for_challenge, list_runs_for_group
+    find_run_targets, get_assertions_for_run, get_events_for_run, get_errors_for_run, list_runs as list_runs_from_db, get_run as get_run_from_db, list_runs_for_challenge, list_runs_for_group
 )
 from .helper import get_engine, get_run_manager
 from ..runs import ActiveRunExists
 from ..scenario import ChallengeNotFound, load_scenario
-from ..schemas import Run, RunCreate, RunStatus, RunAssertion, RunEvent
+from ..schemas import Run, RunCreate, RunStatus, RunAssertion, RunEvent, RunEventResult, RunError
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 TERMINAL = {RunStatus.PASSED, RunStatus.FAILED, RunStatus.ERROR}
@@ -59,8 +59,21 @@ async def get_run(run_id: str, request: Request) -> Run:
         raise HTTPException(404, "Run not found")
     return run
 
-@router.get("/{run_id}/events", response_model=list[RunAssertion])
-async def get_run_events(run_id: str, request: Request) -> list[RunAssertion]:
+@router.get("/{run_id}/events", response_model=list[RunEventResult])
+async def get_run_events(run_id: str, request: Request) -> list[RunEventResult]:
+    engine = get_engine(request)
+    events = get_events_for_run(engine, run_id)
+    return [RunEventResult(**event) for event in events]
+
+@router.get("/{run_id}/errors", response_model=list[RunError])
+async def get_run_errors(run_id: str, request: Request) -> list[RunError]:
+    """Get all errors for a run. Debug endpoint to verify errors are saved."""
+    engine = get_engine(request)
+    return get_errors_for_run(engine, run_id)
+
+@router.get("/{run_id}/assertions", response_model=list[RunAssertion])
+async def get_run_assertions(run_id: str, request: Request) -> list[RunAssertion]:
+    """Get all assertions for a run. Debug endpoint to verify assertions are saved."""
     engine = get_engine(request)
     return get_assertions_for_run(engine, run_id)
 

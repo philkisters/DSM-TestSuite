@@ -16,14 +16,14 @@
   </div>
 </template>
 <script setup lang="ts">
-import type { RunAssertion } from '~~/shared/run'
+import type { RunEventResult } from '~~/shared/run'
 import { getRunAssertions } from '~~/app/services/backend/run.service'
 
 const props = defineProps<{
   runId: string
 }>()
 
-const runAssertions = ref<RunAssertion[]>([])
+const runAssertions = ref<RunEventResult[]>([])
 
 onMounted(async () => {
   if (props.runId) {

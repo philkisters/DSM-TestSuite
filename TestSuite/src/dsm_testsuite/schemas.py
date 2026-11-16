@@ -155,6 +155,37 @@ class RunAssertion(BaseModel):
     passed: bool
     message: str | None = None
     created_at: datetime
+
+
+class RunError(BaseModel):
+    """core.run_errors - HTTP errors when communicating with Orchestrator/Proxy"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    run_id: str
+    step_index: int
+    name: str
+    params: dict
+    error_code: int | None
+    error_text: str
+    created_at: datetime
+
+
+class RunEventResult(BaseModel):
+    """Unified schema for assertion and error events."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    run_id: str
+    step_index: int
+    name: str
+    params: dict
+    created_at: datetime
+    type: Literal["assertion", "error"]
+    passed: bool | None = None
+    message: str | None = None
+    error_code: int | None = None
+    error_text: str | None = None
     
 class GroupChallengeStats(BaseModel):
     key: str

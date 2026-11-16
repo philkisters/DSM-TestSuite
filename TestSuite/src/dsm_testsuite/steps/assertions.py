@@ -29,6 +29,9 @@ class _TimeoutStep(Step):
 async def _registered(ctx: StepContext) -> set[str]:
     return {p["peerId"] for p in await ctx.proxy.peers()}
 
+class _ImagesStep(Step):
+    images: list[str] = Field(alias="images")
+
 
 @assertion("peer-registered")
 class PeerRegistered(_PeerStep):
@@ -173,6 +176,37 @@ async def _check_fingers(ctx: StepContext, peer: str, expected: list[str]) -> No
             f"finger table of {peer!r} is wrong at {len(bad)} of {len(expected)} entries "
             f"(indices {_ranges(bad)}); e.g. finger {first} should be {expected[first]!r}, got {actual[first]!r}"
         )
+        
+async def _check_images(ctx: StepContext, peer: str, expected: list[str]) -> None:
+    try:
+        images = await _list_images(ctx, peer)
+    except AssertionFailed as exc:
+        raise AssertionFailed(f"failed to list images for {peer!r}: {exc!r}") from exc
+
+    bad = [i for i, (e, a) in enumerate(zip(expected, images)) if e != a]
+    if bad:
+        first = bad[0]
+        raise AssertionFailed(
+            f"image list of {peer!r} is wrong at {len(bad)} of {len(expected)} entries "
+            f"(indices {_ranges(bad)}); e.g. image {first} should be {expected[first]!r}, got {images[first]!r}"
+        )
+        
+async def _list_images(ctx: StepContext, peer: str) -> list[str]:
+    try:
+        response: Message = await ctx.proxy.send_list_images_message(peer)
+    except Exception as exc:
+        raise AssertionFailed(f"failed to send ListImagesMessage to {peer!r}: {exc!r}") from exc
+
+    if response.code == MessageCode.ERROR:
+        raise AssertionFailed(f"{peer!r} returned an ErrorMessage but should be part of the network: {_error_text(response)}")
+    if response.code != MessageCode.LIST_IMAGE_RESPONSE:
+        raise AssertionFailed(f"{peer!r} should return a LIST_IMAGE_RESPONSE, got code '{response.code}'")
+    if "images" not in response.content:
+        raise AssertionFailed("The LIST_IMAGE_RESPONSE content must contain the 'images' key")
+    images = response.content["images"]
+    if not isinstance(images, list):
+        raise AssertionFailed("The 'images' key should be a list")
+    return images
 
 
 def _model_peer(ctx: StepContext, peer: str) -> None:
@@ -209,6 +243,29 @@ class FingerTable(_PeerStep, _TimeoutStep):
             await _check_fingers(ctx, self.peer_name, ctx.model.fingers(self.peer_name))
 
         await self.retry(check)
+        
+@assertion("empty-images")
+class EmptyImages(_PeerStep):
+    """The peer has no images stored locally."""
+
+    async def execute(self, ctx: StepContext) -> None:
+        _model_peer(ctx, self.peer_name)
+        images = await _list_images(ctx, self.peer_name)
+        if len(images) > 0:
+            raise AssertionFailed(f"peer {self.peer_name!r} has images stored locally: {images}")
+        
+@assertion("image-list")
+class ImageList(_PeerStep, _ImagesStep):
+    """The peer has a list of images stored locally."""
+
+    async def execute(self, ctx: StepContext) -> None:
+        _model_peer(ctx, self.peer_name)
+        images = await _list_images(ctx, self.peer_name)
+        if not isinstance(images, list):
+            raise AssertionFailed("The 'images' key should be a list")
+        if set(images) != set(self.images):
+            raise AssertionFailed(f"Expected images {self.images}, but got {images}")
+        return images
 
 
 @assertion("valid-network")
@@ -225,6 +282,8 @@ class ValidNetwork(_TimeoutStep):
                     await _check_neighbors(ctx, peer, ctx.model.successor(peer), ctx.model.predecessor(peer))
                     if (ctx.check_fingers):
                         await _check_fingers(ctx, peer, ctx.model.fingers(peer))
+                    if (ctx.check_images):
+                        await _check_images(ctx, peer, ctx.model.images(peer))
                 except AssertionFailed as exc:
                     errors.append(str(exc))
             if errors:
