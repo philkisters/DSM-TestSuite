@@ -67,7 +67,10 @@ select the peer again to refresh its table.
 The view also requests the selected peer's image list. Each node shows an image
 icon and its last known count, or `?` until a request succeeds. Counts remain
 visible when selecting other peers and are refreshed when a peer is selected again.
-Peer Details lists the selected peer's last known image IDs and their SHA-256 hashes.
+Peer Details lists the selected peer's last known image IDs and shortened SHA-256
+hashes. Use **Load** to fetch image files from that peer; failed images show an
+error and can be retried with the same button. Changing peers or refreshing the
+image list clears the loaded previews.
 
 Use **Put image** to select a peer, choose a PNG, and preview and send it. The
 image ID defaults to the filename and shows its shortened hash; it can be edited.

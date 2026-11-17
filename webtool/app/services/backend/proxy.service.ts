@@ -1,5 +1,5 @@
 import { type NetworkEvent, NetworkEventApiSchema, type NetworkStat, NetworkStatApiSchema } from '~~/shared/network'
-import { AckMessageSchema, ErrorMessageSchema, GetFingersRequestSchema, GetFingersResponseSchema, ListImagesRequestSchema, ListImagesResponseSchema, MessageCode, MessageSchema, PutImageMessageSchema, type Message } from '~~/shared/protocol'
+import { AckMessageSchema, ErrorMessageSchema, GetFingersRequestSchema, GetFingersResponseSchema, ListImagesRequestSchema, ListImagesResponseSchema, MessageCode, MessageSchema, PutImageMessageSchema, RequestImageSchema, type Message } from '~~/shared/protocol'
 
 async function sendPeerMessage(request: Message, description: string, signal?: AbortSignal): Promise<Message> {
   const response = await fetch('/proxy/message', {
@@ -43,6 +43,19 @@ export async function getPeerImages(networkId: string, peerId: string, signal?: 
   })
   const message = await sendPeerMessage(request, 'images', signal)
   return ListImagesResponseSchema.parse(message).content.images
+}
+
+export async function getPeerImage(networkId: string, peerId: string, imageId: string, signal?: AbortSignal): Promise<string> {
+  const request = RequestImageSchema.parse({
+    sender: { network_id: networkId, peer_id: 'Webtool' },
+    receiver: { network_id: networkId, peer_id: peerId },
+    code: MessageCode.REQUEST_IMAGE,
+    content: { image_id: imageId }
+  })
+  const message = await sendPeerMessage(request, 'image', signal)
+  const image = PutImageMessageSchema.parse(message).content
+  if (image.image_id !== imageId) throw new Error('Image response has incorrect image ID')
+  return image.image
 }
 
 export async function putPeerImage(networkId: string, peerId: string, imageId: string, image: string): Promise<void> {

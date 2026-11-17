@@ -52,6 +52,11 @@ export const PutImageMessageSchema = MessageSchema.extend({
   content: z.object({ image_id: z.string().min(1), image: z.string().min(1) })
 })
 
+export const RequestImageSchema = MessageSchema.extend({
+  code: z.literal(MessageCode.REQUEST_IMAGE),
+  content: z.object({ image_id: z.string().min(1) })
+})
+
 export const AckMessageSchema = MessageSchema.extend({
   code: z.literal(MessageCode.ACK),
   content: z.object({})

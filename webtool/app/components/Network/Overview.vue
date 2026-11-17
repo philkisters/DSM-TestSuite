@@ -51,77 +51,16 @@
         >
           Select a peer in the network to see its details.
         </div>
-        <template v-else>
-          <div class="min-h-0 flex-1 overflow-y-auto">
-            <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 py-2">
-              <dt class="text-muted">
-                Peer
-              </dt>
-              <dd class="font-mono truncate">
-                {{ selectedPeerInfo?.peerId ?? selectedPeer }}
-              </dd>
-              <dt class="text-muted">
-                Hash
-              </dt>
-              <dd class="font-mono">
-                {{ selectedPeerInfo?.hash ?? '-' }}
-              </dd>
-              <dt class="text-muted">
-                Status
-              </dt>
-              <dd>{{ selectedPeerInfo ? 'Active' : 'Unknown' }}</dd>
-              <dt class="text-muted">
-                Successor
-              </dt>
-              <dd class="font-mono truncate">
-                {{ selectedPeerInfo?.successor ?? '-' }}
-              </dd>
-              <dt class="text-muted">
-                Predecessor
-              </dt>
-              <dd class="font-mono truncate">
-                {{ selectedPeerInfo?.predecessor ?? '-' }}
-              </dd>
-            </dl>
-            <div class="text-muted pt-2">
-              Images
-            </div>
-            <div v-if="selectedImages === undefined" class="text-muted py-2">
-              Images not loaded.
-            </div>
-            <div v-else-if="!selectedImages.length" class="text-muted py-2">
-              No images.
-            </div>
-            <ul v-else class="space-y-2 py-2">
-              <li v-for="(image, index) in selectedImages" :key="index">
-                <div class="font-mono break-all">
-                  {{ image.id }}
-                </div>
-                <div class="font-mono text-muted text-xs break-all">
-                  {{ image.hash }}
-                </div>
-              </li>
-            </ul>
-          </div>
-          <div class="flex gap-2 pt-2">
-            <UButton
-              color="warning"
-              :loading="busy === 'leave'"
-              :disabled="busy !== null"
-              @click="leave"
-            >
-              Leave
-            </UButton>
-            <UButton
-              color="error"
-              :loading="busy === 'kill'"
-              :disabled="busy !== null"
-              @click="kill"
-            >
-              Kill
-            </UButton>
-          </div>
-        </template>
+        <NetworkPeerDetails
+          v-else
+          :network-id="networkId"
+          :peer-id="selectedPeer"
+          :peer="selectedPeerInfo"
+          :images="selectedImages"
+          :busy="busy"
+          @leave="leave"
+          @kill="kill"
+        />
       </div>
     </div>
   </div>
@@ -130,7 +69,6 @@
 <script setup lang="ts">
 import { getPeerFingers, subscribeToNetworkEvents } from '~~/app/services/backend/proxy.service'
 import { activeOrchestrator } from '~~/app/services/backend/orchestrator.service'
-import { hashId } from '~/composables/useHash'
 import type { NetworkEvent } from '~~/shared/network'
 
 const props = defineProps<{
@@ -146,10 +84,7 @@ const peerImages = usePeerImages(toRef(() => props.networkId), selectedPeer)
 const imageCounts = computed(() => new Map(
   Array.from(peerImages.value, ([peer, images]) => [peer, images.length])
 ))
-const selectedImages = computed(() => {
-  const images = selectedPeer.value ? peerImages.value.get(selectedPeer.value) : undefined
-  return images?.map(id => ({ id, hash: hashId(id) }))
-})
+const selectedImages = computed(() => selectedPeer.value ? peerImages.value.get(selectedPeer.value) : undefined)
 const { peers, pushAll } = useNetworkTopology()
 const selectedPeerInfo = computed(() => peers.value.find(p => p.peerId === selectedPeer.value) ?? null)
 const visibleEvents = computed(() => {

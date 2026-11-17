@@ -16,12 +16,12 @@ registerHooks({
     return nextResolve(specifier, context)
   },
   load(url, context, nextLoad) {
-    if (url.endsWith('/Network/ImageModal.vue') || url.endsWith('/Util/HashHint.vue')) {
+    if (url.endsWith('/Network/ImageModal.vue') || url.endsWith('/Network/PeerDetails.vue') || url.endsWith('/Util/HashHint.vue')) {
       const source = readFileSync(new URL(url), 'utf8')
       const script = compileScript(parse(source).descriptor, { id: url }).content
       return {
         format: 'module',
-        source: stripTypeScriptTypes(`import { ref, computed, watch } from 'vue'\n${script}`, { mode: 'transform' }),
+        source: stripTypeScriptTypes(`import { ref, shallowRef, computed, watch, onScopeDispose } from 'vue'\n${script}`, { mode: 'transform' }),
         shortCircuit: true
       }
     }
@@ -36,10 +36,11 @@ registerHooks({
   }
 })
 
-const { getPeerFingers, getPeerImages, putPeerImage } = await import('../app/services/backend/proxy.service.ts')
+const { getPeerFingers, getPeerImages, getPeerImage, putPeerImage } = await import('../app/services/backend/proxy.service.ts')
 const { usePeerImages } = await import('../app/composables/usePeerImages.ts')
 const { readPngAsBase64 } = await import('../app/utils/png.ts')
 const { default: ImageModal } = await import('../app/components/Network/ImageModal.vue')
+const { default: PeerDetails } = await import('../app/components/Network/PeerDetails.vue')
 const { default: HashHint } = await import('../app/components/Util/HashHint.vue')
 const { effectScope, reactive, ref } = await import('vue')
 const envelope = {
@@ -134,6 +135,61 @@ test('rejects invalid image responses and propagates peer errors', async (t) => 
     ...envelope, code: -1, content: { message: 'not joined' }
   }))
   await assert.rejects(getPeerImages('network', 'peer-a'), /not joined/)
+})
+
+test('requests an image and validates the response identity and ID', async (t) => {
+  const fetchMock = t.mock.method(globalThis, 'fetch', async () => Response.json({
+    ...envelope, code: 7, content: { image_id: 'image-1', image: 'aW1hZ2U=' }
+  }))
+  const controller = new AbortController()
+  assert.equal(await getPeerImage('network', 'peer-a', 'image-1', controller.signal), 'aW1hZ2U=')
+  const [, options] = fetchMock.mock.calls[0].arguments
+  assert.equal(options.signal, controller.signal)
+  assert.deepEqual(JSON.parse(options.body), {
+    sender: envelope.receiver, receiver: envelope.sender, code: 10, content: { image_id: 'image-1' }
+  })
+
+  fetchMock.mock.mockImplementation(async () => Response.json({
+    ...envelope, code: 7, content: { image_id: 'other', image: 'aW1hZ2U=' }
+  }))
+  await assert.rejects(getPeerImage('network', 'peer-a', 'image-1'), /incorrect image ID/)
+  fetchMock.mock.mockImplementation(async () => Response.json({
+    ...envelope, code: -1, content: { message: 'not found' }
+  }))
+  await assert.rejects(getPeerImage('network', 'peer-a', 'image-1'), /not found/)
+})
+
+test('loads previews on demand, retries failures and discards stale peer responses', async (t) => {
+  const pending = []
+  t.mock.method(globalThis, 'fetch', (_url, options) => new Promise(resolve => pending.push({ resolve, options })))
+  const props = reactive({
+    networkId: 'network', peerId: 'peer-a', peer: null, images: ['one', 'two'], busy: null
+  })
+  const scope = effectScope()
+  const details = scope.run(() => PeerDetails.setup(props, { expose() {}, emit() {} }))
+  assert.equal(pending.length, 0)
+  const first = details.loadImages()
+  assert.equal(pending.length, 2)
+  assert.equal(details.loading.value, true)
+  const respond = (index, peer, code, content) => pending[index].resolve(Response.json({
+    sender: { network_id: 'network', peer_id: peer }, receiver: envelope.receiver, code, content
+  }))
+  respond(0, 'peer-a', 7, { image_id: 'one', image: 'b25l' })
+  respond(1, 'peer-a', -1, { message: 'not found' })
+  await first
+  assert.equal(details.loadedImages.value.get('one'), 'b25l')
+  assert.match(details.imageErrors.value.get('two'), /not found/)
+  const retry = details.loadImages()
+  assert.equal(pending.length, 3)
+  assert.equal(JSON.parse(pending[2].options.body).content.image_id, 'two')
+  props.peerId = 'peer-b'
+  assert.equal(pending[2].options.signal.aborted, true)
+  respond(2, 'peer-a', 7, { image_id: 'two', image: 'dHdv' })
+  await retry
+  assert.equal(details.loadedImages.value.size, 0)
+  assert.equal(details.imageErrors.value.size, 0)
+  assert.equal(details.loading.value, false)
+  scope.stop()
 })
 
 test('keeps per-peer image lists across selections and ignores stale responses', async (t) => {
