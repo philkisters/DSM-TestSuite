@@ -250,6 +250,118 @@ test('defaults the image ID to the filename without overwriting a custom ID', as
   scope.stop()
 })
 
+test('multi upload assigns peers, sends sequentially and resumes after a failure', async (t) => {
+  t.mock.method(Math, 'random', (() => {
+    const values = [0, 0.99]
+    return () => values.shift() ?? 0
+  })())
+  const previousReader = globalThis.FileReader
+  const previousImage = globalThis.Image
+  const previousToast = globalThis.useToast
+  t.after(() => {
+    if (previousReader === undefined) delete globalThis.FileReader
+    else globalThis.FileReader = previousReader
+    if (previousImage === undefined) delete globalThis.Image
+    else globalThis.Image = previousImage
+    if (previousToast === undefined) delete globalThis.useToast
+    else globalThis.useToast = previousToast
+  })
+  globalThis.FileReader = class {
+    async readAsDataURL(file) {
+      this.result = `data:image/png;base64,${Buffer.from(await file.arrayBuffer()).toString('base64')}`
+      this.onload()
+    }
+  }
+  globalThis.Image = class {
+    set src(_value) { queueMicrotask(() => this.onload()) }
+  }
+  globalThis.useToast = () => ({ add() {} })
+  const pending = []
+  t.mock.method(globalThis, 'fetch', (_url, options) => new Promise(resolve => pending.push({ resolve, options })))
+  const props = reactive({
+    networkId: 'network', peers: [{ peerId: 'peer-a' }, { peerId: 'peer-b' }], selectedPeer: null
+  })
+  const scope = effectScope()
+  const modal = scope.run(() => ImageModal.setup(props, { expose() {} }))
+  const png = name => new File([Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10])], name)
+  modal.files.value = [png('first.png'), png('second.png')]
+  await new Promise(resolve => setImmediate(resolve))
+  const hash = value => createHash('sha256').update(value).digest('hex').slice(0, 8)
+  assert.deepEqual(modal.uploads.value.map(({ imageId, hash, peerId, peerHash }) => ({ imageId, hash, peerId, peerHash })), [
+    { imageId: 'first.png', hash: hash('first.png'), peerId: 'peer-a', peerHash: hash('peer-a') },
+    { imageId: 'second.png', hash: hash('second.png'), peerId: 'peer-b', peerHash: hash('peer-b') }
+  ])
+  assert.equal(modal.canSubmitMultiple.value, true)
+  const respond = (index, peer, code, content = {}) => pending[index].resolve(Response.json({
+    sender: { network_id: 'network', peer_id: peer },
+    receiver: envelope.receiver,
+    code,
+    content
+  }))
+  const firstAttempt = modal.submitMultiple()
+  assert.equal(pending.length, 1)
+  assert.equal(JSON.parse(pending[0].options.body).content.image_id, 'first.png')
+  respond(0, 'peer-a', 0)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(modal.sentCount.value, 1)
+  assert.equal(pending.length, 2)
+  assert.equal(JSON.parse(pending[1].options.body).receiver.peer_id, 'peer-b')
+  respond(1, 'peer-b', -1, { message: 'rejected' })
+  await firstAttempt
+  assert.match(modal.uploadError.value, /second.png.*rejected/)
+  assert.equal(modal.sentCount.value, 1)
+  const originalFiles = [...modal.files.value]
+  modal.files.value = [...originalFiles, png('third.png')]
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(modal.sentCount.value, 1)
+  assert.equal(modal.uploads.value[1].peerId, 'peer-b')
+  modal.files.value = originalFiles
+  assert.equal(modal.sentCount.value, 1)
+  assert.equal(modal.uploads.value[1].peerId, 'peer-b')
+  const retry = modal.submitMultiple()
+  assert.equal(JSON.parse(pending[2].options.body).content.image_id, 'second.png')
+  respond(2, 'peer-b', 0)
+  await retry
+  assert.equal(modal.sentCount.value, 2)
+  assert.equal(modal.canSubmitMultiple.value, false)
+  modal.files.value = [originalFiles[1]]
+  assert.equal(modal.sentCount.value, 1)
+  assert.equal(modal.canSubmitMultiple.value, false)
+  scope.stop()
+})
+
+test('multi upload rejects invalid files and prevents sending to unavailable peers', async (t) => {
+  const previousReader = globalThis.FileReader
+  const previousImage = globalThis.Image
+  t.after(() => {
+    if (previousReader === undefined) delete globalThis.FileReader
+    else globalThis.FileReader = previousReader
+    if (previousImage === undefined) delete globalThis.Image
+    else globalThis.Image = previousImage
+  })
+  globalThis.FileReader = class {
+    async readAsDataURL(file) {
+      this.result = `data:image/png;base64,${Buffer.from(await file.arrayBuffer()).toString('base64')}`
+      this.onload()
+    }
+  }
+  globalThis.Image = class {
+    set src(_value) { queueMicrotask(() => this.onerror()) }
+  }
+  const props = reactive({ networkId: 'network', peers: [{ peerId: 'peer-a' }], selectedPeer: null })
+  const scope = effectScope()
+  const modal = scope.run(() => ImageModal.setup(props, { expose() {} }))
+  const png = new File([Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10])], 'invalid.png')
+  modal.files.value = [png, new File(['bad'], 'bad.png')]
+  await new Promise(resolve => setImmediate(resolve))
+  assert.match(modal.uploads.value[0].error, /preview/)
+  assert.match(modal.uploads.value[1].error, /valid PNG/)
+  assert.equal(modal.canSubmitMultiple.value, false)
+  props.peers = []
+  assert.equal(modal.missingPeer.value, true)
+  scope.stop()
+})
+
 test('shared hash hint hashes the exact ID and updates when it changes', () => {
   const props = reactive({ value: '' })
   const scope = effectScope()

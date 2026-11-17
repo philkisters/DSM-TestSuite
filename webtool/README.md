@@ -74,6 +74,13 @@ image ID defaults to the filename and shows its shortened hash; it can be edited
 An acknowledgement means the peer accepted the message; forwarding or storage may
 still be in progress.
 
+Enable **Multi upload** to select multiple PNGs. Each filename becomes its image
+ID and is shown with a shortened SHA-256 hash, preview, and a randomly assigned
+network peer and its shortened hash. Remove individual files with the X button.
+Confirm to send the images sequentially and track acknowledgements in the
+progress bar. If an upload fails, retry resumes at the failed image.
+The selected files appear as a list, and the modal scrolls for large selections.
+
 ## Production
 
 Build the application for production:
