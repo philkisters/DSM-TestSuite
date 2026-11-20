@@ -131,8 +131,19 @@ class RunManager:
             async with httpx.AsyncClient(timeout=settings.http_timeout) as http:
                 ctx = StepContext(
                     network_id=run.network_id,
-                    orchestrator=OrchestratorClient(vm_ip, run.network_id, http),
-                    proxy=ProxyClient(settings.proxy_admin_url, run.network_id, http),
+                    orchestrator=OrchestratorClient(
+                        vm_ip,
+                        run.network_id,
+                        http,
+                        scenario.protocols.orchestrator,
+                        scenario.replication_factor,
+                    ),
+                    proxy=ProxyClient(
+                        settings.proxy_admin_url,
+                        run.network_id,
+                        http,
+                        scenario.protocols.peer,
+                    ),
                     check_fingers=scenario.check_fingers,
                     check_images=scenario.check_images,
                 )

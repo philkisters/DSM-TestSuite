@@ -12,6 +12,16 @@ export function shortHash(id: string): string {
   return hashId(id).slice(0, SHORT_HASH_LENGTH)
 }
 
+export function replicationHashes(id: string, replicationFactor: number): string[] {
+  const hashes: string[] = []
+  let digest = sha256(new TextEncoder().encode(id))
+  for (let level = 0; level < replicationFactor; level++) {
+    hashes.push(bytesToHex(digest))
+    if (level + 1 < replicationFactor) digest = sha256(digest)
+  }
+  return hashes
+}
+
 export function useHash() {
-  return { hashId, shortHash, SHORT_HASH_LENGTH }
+  return { hashId, shortHash, replicationHashes, SHORT_HASH_LENGTH }
 }

@@ -306,6 +306,31 @@ test('defaults the image ID to the filename without overwriting a custom ID', as
   scope.stop()
 })
 
+test('shows the chained hash and responsible peer for every replica', () => {
+  const scope = effectScope()
+  const modal = scope.run(() => ImageModal.setup({
+    networkId: 'network',
+    peers: [
+      { peerId: 'peer-a' },
+      { peerId: 'peer-b' },
+      { peerId: 'peer-c' }
+    ],
+    selectedPeer: 'peer-a',
+    replicationFactor: 3
+  }, { expose() {} }))
+
+  const first = createHash('sha256').update('image-0.png').digest()
+  const second = createHash('sha256').update(first).digest()
+  const third = createHash('sha256').update(second).digest()
+  const hashes = [first, second, third].map(digest => digest.toString('hex'))
+  const routes = modal.routesFor('image-0.png')
+  assert.deepEqual(routes.map(route => route.hash), hashes.map(hash => hash.slice(0, 8)))
+  for (const route of routes) {
+    assert.ok(['peer-a', 'peer-b', 'peer-c'].includes(route.peerId))
+  }
+  scope.stop()
+})
+
 test('multi upload assigns peers, sends sequentially and resumes after a failure', async (t) => {
   t.mock.method(Math, 'random', (() => {
     const values = [0, 0.99]

@@ -1,6 +1,6 @@
 """Registration endpoint: newline-delimited JSON, one request/response per connection.
 
-Request:  {"action": "register"|"unregister", "networkId": "...", "peerId": "...","port": 1234}
+Request:  {"action": "register"|"unregister", "network_id": "...", "peer_id": "...","port": 1234}
 Response: {"status": "ok"} or {"status": "error", "message": "..."}
 """
 import asyncio

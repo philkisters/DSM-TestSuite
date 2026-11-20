@@ -73,6 +73,13 @@
                       {{ uploads[index]?.hash }}
                     </div>
                     <div
+                      v-for="route in routesFor(uploads[index]?.imageId ?? '')"
+                      :key="route.level"
+                      class="font-mono text-xs text-muted"
+                    >
+                      R{{ route.level }} {{ route.hash }} → {{ route.peerId || 'unassigned' }}
+                    </div>
+                    <div
                       v-if="uploads[index]?.error"
                       class="break-words text-error"
                     >
@@ -146,6 +153,23 @@
               <UtilHashHint :value="imageId" />
             </template>
           </UFormField>
+          <div
+            v-if="imageId.trim()"
+            class="rounded-md bg-muted/30 p-2 text-sm"
+          >
+            <div class="mb-1 font-medium">
+              Replica destinations
+            </div>
+            <div
+              v-for="route in singleRoutes"
+              :key="route.level"
+              class="grid grid-cols-[2rem_4.5rem_minmax(0,1fr)] gap-2 font-mono"
+            >
+              <span>R{{ route.level }}</span>
+              <span>{{ route.hash }}</span>
+              <span class="break-all">{{ route.peerId || 'No peer available' }}</span>
+            </div>
+          </div>
           <UFormField label="PNG file" :error="fileError" required>
             <UFileUpload
               v-model="file"
@@ -178,7 +202,7 @@
 
 <script setup lang="ts">
 import { putPeerImage } from '~~/app/services/backend/proxy.service'
-import { shortHash } from '~/composables/useHash'
+import { hashId, replicationHashes, SHORT_HASH_LENGTH, shortHash } from '~/composables/useHash'
 import { readPngAsBase64 } from '~/utils/png'
 import type { TopologyPeer } from '~/composables/useNetworkTopology'
 
@@ -186,6 +210,7 @@ const props = defineProps<{
   networkId: string
   peers: TopologyPeer[]
   selectedPeer: string | null
+  replicationFactor?: number
 }>()
 
 const open = ref(false)
@@ -210,6 +235,11 @@ interface ImageUpload {
   sent: boolean
 }
 const uploads = ref<ImageUpload[]>([])
+const replicationFactor = computed(() => Math.max(1, props.replicationFactor ?? 1))
+const ring = computed(() => props.peers
+  .map(peer => ({ peerId: peer.peerId, hash: hashId(peer.peerId) }))
+  .sort((a, b) => a.hash.localeCompare(b.hash) || a.peerId.localeCompare(b.peerId)))
+const singleRoutes = computed(() => routesFor(imageId.value.trim()))
 const sentCount = computed(() => uploads.value.filter(upload => upload.sent).length)
 const uploadError = ref('')
 const preparing = ref(false)
@@ -221,6 +251,15 @@ const missingPeer = computed(() => uploads.value.some(upload => !upload.sent
   && !props.peers.some(peer => peer.peerId === upload.peerId)))
 const canSubmitMultiple = computed(() => !loading.value && !preparing.value && !missingPeer.value
   && sentCount.value < uploads.value.length && uploads.value.every(upload => !!upload.image && !upload.error))
+
+function routesFor(id: string) {
+  if (!id) return []
+  return replicationHashes(id, replicationFactor.value).map((hash, index) => ({
+    level: index + 1,
+    hash: hash.slice(0, SHORT_HASH_LENGTH),
+    peerId: ring.value.find(peer => peer.hash >= hash)?.peerId ?? ring.value[0]?.peerId ?? ''
+  }))
+}
 
 watch(files, async (selected, _previous, onCleanup) => {
   uploadError.value = ''

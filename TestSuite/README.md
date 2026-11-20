@@ -11,6 +11,32 @@ Scaffold. REST API (`/api`) plus a WebSocket for live run updates.
 
 Run: `uv run testsuite` · Tests: `uv run pytest`
 
+## Challenge protocol versions
+
+Every challenge must pin the two independently evolving protocols:
+
+```yaml
+protocols:
+  peer: v3
+  orchestrator: v1
+```
+
+All peer versions use the same snake_case wire format. Peer versions describe
+the message set officially supported at each curriculum stage: basic neighbors
+in v1, fingers in v2, images in v3, and replicated images in v4. Orchestrator
+versions independently control REST request payloads. Replication uses peer v4
+with orchestrator v2 and a network-wide replication factor:
+
+```yaml
+protocols:
+  peer: v4
+  orchestrator: v2
+replication-factor: 3
+```
+
+Missing versions and incompatible version/factor combinations are rejected when
+the challenge is loaded.
+
 ## Copy Challenges to server
 Run the following command from the TestSuite folder
 ```

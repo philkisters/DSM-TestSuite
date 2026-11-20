@@ -11,6 +11,7 @@
             :network-id="networkId"
             :peers="peers"
             :selected-peer="selectedPeer"
+            :replication-factor="replicationFactor"
           />
           <NetworkJoinModal
             :network-id="networkId"
@@ -69,6 +70,7 @@
 <script setup lang="ts">
 import { getPeerFingers, subscribeToNetworkEvents } from '~~/app/services/backend/proxy.service'
 import { activeOrchestrator } from '~~/app/services/backend/orchestrator.service'
+import { getNetwork } from '~~/app/services/backend/network.service'
 import type { NetworkEvent } from '~~/shared/network'
 
 const props = defineProps<{
@@ -84,6 +86,7 @@ const peerImages = usePeerImages(toRef(() => props.networkId), selectedPeer)
 const imageCounts = computed(() => new Map(
   Array.from(peerImages.value, ([peer, images]) => [peer, images.length])
 ))
+const replicationFactor = ref(1)
 const selectedImages = computed(() => selectedPeer.value ? peerImages.value.get(selectedPeer.value) : undefined)
 const { peers, pushAll } = useNetworkTopology()
 const selectedPeerInfo = computed(() => peers.value.find(p => p.peerId === selectedPeer.value) ?? null)
@@ -93,6 +96,17 @@ const visibleEvents = computed(() => {
   return networkEvents.value.filter(e => e.type === 'message' && (e.src === peer || e.dst === peer))
 })
 const busy = ref<'leave' | 'kill' | null>(null)
+
+watch(() => [props.networkId, useGroupStore().activeGroup?.id], async ([networkId, groupId]) => {
+  replicationFactor.value = 1
+  if (!groupId) return
+  try {
+    const network = await getNetwork(groupId, networkId)
+    replicationFactor.value = network?.replicationFactor ?? 1
+  } catch (error) {
+    console.error('Failed to load network settings:', error)
+  }
+}, { immediate: true })
 
 watch([() => props.networkId, selectedPeer], async ([networkId, peerId], _previous, onCleanup) => {
   fingers.value = []

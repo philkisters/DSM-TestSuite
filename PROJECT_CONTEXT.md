@@ -152,8 +152,8 @@ Peers have logical addresses:
 
 Example:
 ```text
-  networkId = group-04
-  peerId = 42
+  network_id = group-04
+  peer_id = 42
 ```
 The Network ID allows multiple independent student networks to exist simultaneously.
 
@@ -181,6 +181,9 @@ and stays registered, stops it, and then checks that it is no longer registered:
 name: first-peer
 description: Start a peer. This should register at the Proxy over port `9001`. Wait for 10 seconds, check if peer is still alive and registered. Then stop peer.
 archived: false
+protocols:
+  peer: v1
+  orchestrator: v1
 
 steps:
   - action: start-peer
@@ -207,7 +210,11 @@ steps:
     number: 0
 ```
 
-The top-level fields are `name`, `description`, `archived`, and `steps`.
+The top-level fields are `name`, `description`, `archived`, `protocols`, and `steps`.
+`protocols.peer` and `protocols.orchestrator` are versioned independently so a
+challenge remains reproducible when either wire contract changes. Replication
+challenges additionally declare a `replication-factor` and must use compatible
+peer and orchestrator versions.
 Actions such as `start-peer`, `wait`, and `stop-peer` change or wait on the
 system. Assertions such as `peer-registered`, `peer-not-registered`, and
 `peers-registered` check its observable state. Action and assertion parameters,

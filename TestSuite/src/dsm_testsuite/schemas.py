@@ -5,6 +5,7 @@ from ipaddress import ip_address
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from dsm_protocol import OrchestratorProtocolVersion
 
 
 class RunStatus(str, Enum):
@@ -74,6 +75,38 @@ class GroupCreate(BaseModel):
     @classmethod
     def _ip(cls, v: str) -> str:
         return str(ip_address(v.strip()))
+
+
+class Network(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    group_id: int
+    network_id: str
+    orchestrator_version: OrchestratorProtocolVersion
+    replication_factor: int | None = None
+    created_at: datetime
+
+
+class NetworkCreate(BaseModel):
+    network_id: str = Field(min_length=1, max_length=128)
+    orchestrator_version: OrchestratorProtocolVersion = OrchestratorProtocolVersion.V1
+    replication_factor: int | None = Field(default=None, gt=0)
+
+    @field_validator("network_id")
+    @classmethod
+    def _strip_network_id(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("network_id must not be blank")
+        return value
+
+    def model_post_init(self, _context: object) -> None:
+        if (
+            self.orchestrator_version is OrchestratorProtocolVersion.V1
+            and self.replication_factor is not None
+        ):
+            raise ValueError("replication_factor requires orchestrator version v2")
 
 
 class Challenge(BaseModel):

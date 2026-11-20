@@ -7,7 +7,7 @@
   - Test: Over the course proxy with a fixed IP and Port. Identification of other peers by `NetworkId` and `PeerId`
 - Request / Response system (open TCP connection, send request, wait for response, close connection)
 - P2P Structure (similar to Chord, at the beginning without fingers) is symmetrical, when I am your predecessor you are my successor.
-- Peers in the network are sorted by the SHA-256 hashed peerId.
+- Peers in the network are sorted by the SHA-256 hashed `peer_id`.
 - Images have an arbitrary name used as the image Id. That can be searched in the network. An image is stored on that peer, which has the next smaller or equal hash. To get the hash of the image the image id is hashed with the SHA256 algorithm. 
 
 ## Base Identity
@@ -25,14 +25,14 @@
 ```json
 {
     "sender": {
-      "networkId": "my-network",
-      "peerId": "my-id"
+      "network_id": "my-network",
+      "peer_id": "my-id"
     },
     "receiver": {
-      "networkId": "my-network",
-      "peerId": "target-id"
+      "network_id": "my-network",
+      "peer_id": "target-id"
     },
-    "message-code": 1,
+    "code": 1,
     "content": {
       ...
     }
@@ -123,7 +123,7 @@ Most likely they will reject the join until, they repair the ring.
 The peer should be resilient to keep the two correct neighbors and periodically with the heartbeat check if the prior neighbors are back online.
 
 ## Hashing
-Hashes are computed as SHA-256 over the UTF-8 bytes of the ID string, with no normalization. Peers hash `peerId`, images hash `imageId` (e.g. `image-17.png`). Digests are compared as unsigned 256-bit big-endian integers (equivalently, byte-wise lexicographic order). Ties between equal hashes are broken by comparing the raw ID strings.
+Hashes are computed as SHA-256 over the UTF-8 bytes of the ID string, with no normalization. Peers hash `peer_id`, images hash `image_id` (e.g. `image-17.png`). Digests are compared as unsigned 256-bit big-endian integers (equivalently, byte-wise lexicographic order). Ties between equal hashes are broken by comparing the raw ID strings.
 
 ## Message Content
 
@@ -158,12 +158,12 @@ Hashes are computed as SHA-256 over the UTF-8 bytes of the ID string, with no no
     ...
     "content": {
       "predecessor":{
-        "networkId": "my-network",
-        "peerId": "predecessor-id"
+        "network_id": "my-network",
+        "peer_id": "predecessor-id"
       },
       "successor":{
-        "networkId": "my-network",
-        "peerId": "successor-id"
+        "network_id": "my-network",
+        "peer_id": "successor-id"
       },
     }
 }
@@ -182,12 +182,12 @@ Hashes are computed as SHA-256 over the UTF-8 bytes of the ID string, with no no
     ...
     "content": {
       "predecessor":{
-        "networkId": "my-network",
-        "peerId": "predecessor-id"
+        "network_id": "my-network",
+        "peer_id": "predecessor-id"
       },
       "successor":{
-        "networkId": "my-network",
-        "peerId": "successor-id"
+        "network_id": "my-network",
+        "peer_id": "successor-id"
       },
     }
 }
@@ -208,12 +208,12 @@ Hashes are computed as SHA-256 over the UTF-8 bytes of the ID string, with no no
     "content": {
       "fingers": [
         {
-          "networkId": "my-network",
-          "peerId": "finger-0-id"
+          "network_id": "my-network",
+          "peer_id": "finger-0-id"
         },
         {
-          "networkId": "my-network",
-          "peerId": "finger-1-id"
+          "network_id": "my-network",
+          "peer_id": "finger-1-id"
         },
         ...
       ]
@@ -225,7 +225,7 @@ Hashes are computed as SHA-256 over the UTF-8 bytes of the ID string, with no no
 {
     ...
     "content": {
-      "imageId": "image-id",
+      "image_id": "image-id",
       "image": "base64 encoded image"
     }
 }
@@ -258,7 +258,7 @@ Hashes are computed as SHA-256 over the UTF-8 bytes of the ID string, with no no
 {
     ...
     "content": {
-      "imageId": "searched-image-id"
+      "image_id": "searched-image-id"
     }
 }
 ```

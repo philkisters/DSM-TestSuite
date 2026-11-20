@@ -7,7 +7,7 @@
   - Test: Over the course proxy with a fixed IP and Port. Identification of other peers by `NetworkId` and `PeerId`
 - Request / Response system (open TCP connection, send request, wait for response, close connection)
 - P2P Structure (similar to Chord, at the beginning without fingers) is symmetrical, when I am your predecessor you are my successor.
-- Peers in the network are sorted by the SHA-256 hashed peerId.
+- Peers in the network are sorted by the SHA-256 hashed `peer_id`.
 - Images have an arbitrary name used as the image Id. That can be searched in the network. An image is stored on that peer, which has the next smaller or equal hash. To get the hash of the image the image id is hashed with the SHA256 algorithm. 
 
 ## Base Identity
@@ -25,20 +25,20 @@
 Peers in a network are ordered by the SHA256 Hashed PeerID.
 
 ## Hashing
-Hashes are computed as SHA-256 over the UTF-8 bytes of the ID string, with no normalization. Peers hash `peerId`, images hash `imageId` (e.g. `image-17.png`). Digests are compared as unsigned 256-bit big-endian integers (equivalently, byte-wise lexicographic order). Ties between equal hashes are broken by comparing the raw ID strings.
+Hashes are computed as SHA-256 over the UTF-8 bytes of the ID string, with no normalization. Peers hash `peer_id`, images hash `image_id` (e.g. `image-17.png`). Digests are compared as unsigned 256-bit big-endian integers (equivalently, byte-wise lexicographic order). Ties between equal hashes are broken by comparing the raw ID strings.
 
 ## Base Message Structure
 ```json
 {
     "sender": {
-      "networkId": "my-network",
-      "peerId": "my-id"
+      "network_id": "my-network",
+      "peer_id": "my-id"
     },
     "receiver": {
-      "networkId": "my-network",
-      "peerId": "target-id"
+      "network_id": "my-network",
+      "peer_id": "target-id"
     },
-    "message-code": 1,
+    "code": 1,
     "content": {
       ...
     }
@@ -93,12 +93,12 @@ The response message reverses the sender and receiver and is send via the same T
     ...
     "content": {
       "predecessor":{
-        "networkId": "my-network",
-        "peerId": "predecessor-id"
+        "network_id": "my-network",
+        "peer_id": "predecessor-id"
       },
       "successor":{
-        "networkId": "my-network",
-        "peerId": "successor-id"
+        "network_id": "my-network",
+        "peer_id": "successor-id"
       },
     }
 }
@@ -117,12 +117,12 @@ The response message reverses the sender and receiver and is send via the same T
     ...
     "content": {
       "predecessor":{
-        "networkId": "my-network",
-        "peerId": "predecessor-id"
+        "network_id": "my-network",
+        "peer_id": "predecessor-id"
       },
       "successor":{
-        "networkId": "my-network",
-        "peerId": "successor-id"
+        "network_id": "my-network",
+        "peer_id": "successor-id"
       },
     }
 }

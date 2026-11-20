@@ -4,7 +4,16 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import yaml
-from pydantic import AliasChoices, BaseModel, BeforeValidator, ConfigDict, Field, ValidationError
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    ValidationError,
+    model_validator,
+)
+from dsm_protocol import OrchestratorProtocolVersion, PeerProtocolVersion
 
 from .config import settings
 from .steps import Step, parse_step
@@ -26,15 +35,41 @@ def _parse_steps(values: Any) -> Any:
     return steps
 
 
+class Protocols(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    peer: PeerProtocolVersion
+    orchestrator: OrchestratorProtocolVersion
+
+
 class Scenario(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
     description: str = ""
     archived: bool = Field(default=False, validation_alias=AliasChoices("archived"))
+    protocols: Protocols
+    replication_factor: int | None = Field(
+        default=None,
+        gt=0,
+        validation_alias=AliasChoices("replication-factor", "replications"),
+    )
     check_fingers: bool = Field(default=False)
     check_images: bool = Field(default=False)
     steps: Annotated[list[Step], BeforeValidator(_parse_steps)]
+
+    @model_validator(mode="after")
+    def validate_protocol_requirements(self) -> "Scenario":
+        if self.protocols.peer is PeerProtocolVersion.V4:
+            if self.protocols.orchestrator is not OrchestratorProtocolVersion.V2:
+                raise ValueError("peer v4 requires orchestrator v2")
+            if self.replication_factor is None:
+                raise ValueError("peer v4 requires replication-factor")
+        if self.replication_factor is not None and (
+            self.protocols.orchestrator is not OrchestratorProtocolVersion.V2
+        ):
+            raise ValueError("replication-factor requires orchestrator v2")
+        return self
 
 
 class ChallengeNotFound(Exception):

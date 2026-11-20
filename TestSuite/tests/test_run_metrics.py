@@ -36,7 +36,17 @@ def test_message_count_is_fetched_before_client_closes(monkeypatch, status):
     monkeypatch.setattr(manager, "_persist", persist)
     run = Run(group_id=1, challenge_id=1, network_id="net-test")
 
-    asyncio.run(manager._execute(run, Scenario(name="test", steps=[]), "127.0.0.1"))
+    asyncio.run(
+        manager._execute(
+            run,
+            Scenario(
+                name="test",
+                protocols={"peer": "v3", "orchestrator": "v1"},
+                steps=[],
+            ),
+            "127.0.0.1",
+        )
+    )
 
     assert len(requests) == 1
     assert requests[0].url.path == "/api/message-stats"
@@ -68,6 +78,7 @@ def test_scenario_image_and_finger_checks_are_passed_to_step_context(monkeypatch
     run = Run(group_id=1, challenge_id=1, network_id="net-test")
     scenario = Scenario(
         name="test",
+        protocols={"peer": "v3", "orchestrator": "v1"},
         check_fingers=True,
         check_images=True,
         steps=[],
@@ -104,7 +115,17 @@ def test_message_count_failure_is_logged_and_status_is_preserved(monkeypatch, ca
     monkeypatch.setattr(manager, "_persist", persist)
     run = Run(group_id=1, challenge_id=1, network_id="net-test")
 
-    asyncio.run(manager._execute(run, Scenario(name="test", steps=[]), "127.0.0.1"))
+    asyncio.run(
+        manager._execute(
+            run,
+            Scenario(
+                name="test",
+                protocols={"peer": "v3", "orchestrator": "v1"},
+                steps=[],
+            ),
+            "127.0.0.1",
+        )
+    )
 
     expected_status = RunStatus.ERROR if scenario_crashes else RunStatus.PASSED
     assert updates[-1] == (expected_status, (None,))

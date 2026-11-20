@@ -21,6 +21,19 @@ class Group(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class Network(Base):
+    __tablename__ = "networks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    group_id: Mapped[int] = mapped_column(ForeignKey("groups.id", ondelete="CASCADE"))
+    network_id: Mapped[str] = mapped_column(Text, unique=True)
+    orchestrator_version: Mapped[str] = mapped_column(Text)
+    replication_factor: Mapped[int | None]
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    group: Mapped[Group] = relationship()
+
+
 class Challenge(Base):
     __tablename__ = "challenges"
 

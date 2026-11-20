@@ -5,10 +5,40 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from enum import IntEnum
+from enum import Enum, IntEnum
 from typing import Any
 
 MAX_LINE_BYTES = 16 * 1024 * 1024
+
+
+class PeerProtocolVersion(str, Enum):
+    V1 = "v1"
+    V2 = "v2"
+    V3 = "v3"
+    V4 = "v4"
+
+    def supports(self, code: int) -> bool:
+        try:
+            message_code = MessageCode(code)
+        except ValueError:
+            return False
+        if self is PeerProtocolVersion.V1:
+            return message_code in {
+                MessageCode.ERROR,
+                MessageCode.ACK,
+                MessageCode.JOIN,
+                MessageCode.LEAVE,
+                MessageCode.GET_NEIGHBORS_REQUEST,
+                MessageCode.GET_NEIGHBORS_RESPONSE,
+            }
+        if self is PeerProtocolVersion.V2:
+            return message_code.value <= MessageCode.GET_FINGERS_RESPONSE
+        return True
+
+
+class OrchestratorProtocolVersion(str, Enum):
+    V1 = "v1"
+    V2 = "v2"
 
 
 class MessageCode(IntEnum):
@@ -66,6 +96,9 @@ class Message:
     receiver: Identity
     code: int
     content: dict[str, Any] = field(default_factory=dict)
+    protocol_version: PeerProtocolVersion = field(
+        default=PeerProtocolVersion.V3, compare=False
+    )
 
     def to_line(self) -> bytes:
         return json.dumps(self.to_json(), separators=(",", ":")).encode("utf-8") + b"\n"
@@ -79,7 +112,11 @@ class Message:
         }
 
     @classmethod
-    def from_json(cls, data: Any) -> Message:
+    def from_json(
+        cls,
+        data: Any,
+        protocol_version: PeerProtocolVersion | None = None,
+    ) -> Message:
         if not isinstance(data, dict):
             raise ProtocolError(f"Invalid message format: {data!r}")
         sender = Identity.from_json(data.get("sender"))
@@ -87,13 +124,31 @@ class Message:
         code = data.get("code")
         content = data.get("content", {})
         if isinstance(code, bool) or not isinstance(code, int):
-            raise ProtocolError("'message-code' must be an integer")
+            raise ProtocolError("'code' must be an integer")
         if not isinstance(content, dict):
             raise ProtocolError("'content' must be a JSON object")
-        return cls(sender=sender, receiver=receiver, code=code, content=content)
+        detected_version = (
+            PeerProtocolVersion(protocol_version) if protocol_version is not None else None
+        )
+        if detected_version is None:
+            if code == MessageCode.PUT_IMAGE and "replication" in content:
+                detected_version = PeerProtocolVersion.V4
+            else:
+                detected_version = PeerProtocolVersion.V3
+        return cls(
+            sender=sender,
+            receiver=receiver,
+            code=code,
+            content=content,
+            protocol_version=detected_version,
+        )
     
     @classmethod
-    def from_line(cls, line: bytes) -> Message:
+    def from_line(
+        cls,
+        line: bytes,
+        protocol_version: PeerProtocolVersion | None = None,
+    ) -> Message:
         try:
             document = json.loads(line.decode("utf-8"))
         except (UnicodeDecodeError, ValueError) as exc:
@@ -101,15 +156,4 @@ class Message:
         if not isinstance(document, dict):
             raise ProtocolError("Message must be a JSON object")
 
-        code = document.get("code")
-        content = document.get("content", {})
-        if isinstance(code, bool) or not isinstance(code, int):
-            raise ProtocolError("'code' must be an integer")
-        if not isinstance(content, dict):
-            raise ProtocolError("'content' must be a JSON object")
-        return cls(
-            sender=Identity.from_json(document.get("sender")),
-            receiver=Identity.from_json(document.get("receiver")),
-            code=code,
-            content=content,
-        )
+        return cls.from_json(document, protocol_version)

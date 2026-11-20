@@ -56,7 +56,10 @@ This way images should be distributed evenly accross the network.
 
 The peer needs to differentiate two cases:
 1. the replication is set to -1, this peer needs to send a new put image message for each replication level in the correct direction
-2. if the replication is set to a number greater than 0 less or equal to the networks replication configuration, it needs to hash the received image_id that often and forward it into the correct direction.
+2. if the replication is set to a number greater than 0 less or equal to the
+network's replication configuration, it routes replica level N to the ring key
+obtained by hashing the UTF-8 `image_id` once with SHA-256, then hashing the
+resulting digest N-1 more times. Level 1 therefore uses the normal image key.
 
 ### Searching an Image
 To search an image, the requester hashes the searched image ID and traverses the ring to the responsible peer. It can list the images available on that peer or request the image directly.

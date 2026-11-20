@@ -3,7 +3,13 @@ import base64
 import httpx
 from pathlib import Path
 
-from dsm_protocol import Message, Identity, MessageCode
+from dsm_protocol import (
+    Message,
+    Identity,
+    MessageCode,
+    OrchestratorProtocolVersion,
+    PeerProtocolVersion,
+)
 
 ORCHESTRATOR_PORT = 9090
 CHALLENGES_IMAGES_DIR = Path(__file__).parent.parent.parent / "Challenges" / "images"
@@ -57,10 +63,21 @@ async def _request(client: httpx.AsyncClient, method: str, url: str, **kwargs) -
 class OrchestratorClient:
     """Only start / join / leave / kill; all P2P traffic goes through the proxy."""
 
-    def __init__(self, vm_ip: str, network_id: str, http: httpx.AsyncClient) -> None:
+    def __init__(
+        self,
+        vm_ip: str,
+        network_id: str,
+        http: httpx.AsyncClient,
+        protocol_version: OrchestratorProtocolVersion = OrchestratorProtocolVersion.V1,
+        replication_factor: int | None = None,
+    ) -> None:
+        if protocol_version is OrchestratorProtocolVersion.V1 and replication_factor is not None:
+            raise ValueError("orchestrator v1 does not support a replication factor")
         self.base_url = f"http://{vm_ip}:{ORCHESTRATOR_PORT}"
         self.network_id = network_id
         self.http = http
+        self.protocol_version = protocol_version
+        self.replication_factor = replication_factor
 
     async def _post(self, path: str, body: dict) -> None:
         await _request(
@@ -76,7 +93,13 @@ class OrchestratorClient:
         await self._get("/health")
 
     async def start(self, peer_id: str) -> None:
-        await self._post("/start", {"peer_id": peer_id})
+        body = {"peer_id": peer_id}
+        if (
+            self.protocol_version is OrchestratorProtocolVersion.V2
+            and self.replication_factor is not None
+        ):
+            body["replications"] = self.replication_factor
+        await self._post("/start", body)
 
     async def join(self, peer_id: str, bootstrap_peer_id: str | None = None) -> None:
         await self._post("/join", {"peer_id": peer_id, "bootstrap_peer_id": bootstrap_peer_id})
@@ -89,10 +112,17 @@ class OrchestratorClient:
 
 
 class ProxyClient:
-    def __init__(self, base_url: str, network_id: str, http: httpx.AsyncClient) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        network_id: str,
+        http: httpx.AsyncClient,
+        protocol_version: PeerProtocolVersion = PeerProtocolVersion.V3,
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.network_id = network_id
         self.http = http
+        self.protocol_version = protocol_version
     
     async def _post(self, path: str, body: dict) -> httpx.Response:
         return await _request(
@@ -149,13 +179,29 @@ class ProxyClient:
         return (await self._get("/api/messages", params=params)).json()
 
     async def _send_message(self, message: Message) -> Message:
+        if not self.protocol_version.supports(message.code):
+            try:
+                name = MessageCode(message.code).name
+            except ValueError:
+                name = str(message.code)
+            raise ClientError(
+                f"{name} is not available in peer protocol {self.protocol_version.value}"
+            )
+        body = message.to_json()
+        body["protocol_version"] = self.protocol_version.value
         response = await _request(
             self.http, "POST",
             f"{self.base_url}/api/message", 
-            json=message.to_json(),
+            json=body,
         )
         
-        return Message.from_json(response.json())
+        reply = Message.from_json(response.json(), self.protocol_version)
+        if not self.protocol_version.supports(reply.code):
+            raise ClientError(
+                f"Peer returned unsupported message code {reply.code} "
+                f"for protocol {self.protocol_version.value}"
+            )
+        return reply
 
     
     async def send_get_neighborsmessage(self, peer_name: str) -> Message:
@@ -169,7 +215,8 @@ class ProxyClient:
                 peer_id=peer_name,
             ),
             code=MessageCode.GET_NEIGHBORS_REQUEST,
-            content={}
+            content={},
+            protocol_version=self.protocol_version,
         )
         
         return await self._send_message(message)
@@ -185,7 +232,8 @@ class ProxyClient:
                 peer_id=peer_name,
             ),
             code=MessageCode.GET_FINGERS_REQUEST,
-            content={}
+            content={},
+            protocol_version=self.protocol_version,
         )
         
         return await self._send_message(message)
@@ -201,14 +249,18 @@ class ProxyClient:
                 peer_id=peer_name,
             ),
             code=MessageCode.LIST_IMAGE_REQUEST,
-            content={}
+            content={},
+            protocol_version=self.protocol_version,
         )
     
         return await self._send_message(message)
 
     async def send_put_image_message(self, peer_name: str, image: str) -> Message:
         image_base64 = _load_image_as_base64(image)
-        
+        content = {"image": image_base64, "image_id": image}
+        if self.protocol_version is PeerProtocolVersion.V4:
+            content["replication"] = -1
+
         message = Message(
             sender=Identity(
                 network_id=self.network_id,
@@ -219,7 +271,8 @@ class ProxyClient:
                 peer_id=peer_name,
             ),
             code=MessageCode.PUT_IMAGE,
-            content={"image": image_base64, "image_id": image}
+            content=content,
+            protocol_version=self.protocol_version,
         )
 
         return await self._send_message(message)

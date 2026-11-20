@@ -3,10 +3,10 @@ import asyncio
 import json
 import time
 from datetime import datetime
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel, Field, ConfigDict
-from dsm_protocol import Message
+from dsm_protocol import Message, PeerProtocolVersion, ProtocolError
 
 from .hub import Hub
 from .recorder import Recorder
@@ -115,11 +115,16 @@ def create_app(registry: Registry, hub: Hub, recorder: Recorder, stats: Stats) -
         return [{**r, "ts": r["ts"].isoformat()} for r in merged]
 
     @app.post("/api/message")
-    async def sendMessage(body: Message):
+    async def sendMessage(body: dict[str, Any]):
         try:
-            response = await registry.send_message(body)
+            protocol_version = body.pop("protocol_version", None)
+            message = Message.from_json(
+                body,
+                PeerProtocolVersion(protocol_version) if protocol_version else None,
+            )
+            response = await registry.send_message(message)
             return response.to_json()
-        except ValueError as e:
+        except (ProtocolError, ValueError) as e:
             raise HTTPException(status_code=400, detail=str(e))
 
     @app.websocket("/api/ws/{network_id}")

@@ -1,6 +1,46 @@
 import { z } from 'zod'
 import { wireDate } from '~~/shared/wireDate'
 
+export const OrchestratorVersionSchema = z.enum(['v1', 'v2'])
+export type OrchestratorVersion = z.infer<typeof OrchestratorVersionSchema>
+
+export const NetworkCreateSchema = z.object({
+  networkId: z.string().trim().min(1).max(128),
+  orchestratorVersion: OrchestratorVersionSchema,
+  replicationFactor: z.number().int().positive().nullable()
+}).superRefine((network, context) => {
+  if (network.orchestratorVersion === 'v1' && network.replicationFactor !== null) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Replication requires orchestrator v2',
+      path: ['replicationFactor']
+    })
+  }
+}).transform(network => ({
+  network_id: network.networkId,
+  orchestrator_version: network.orchestratorVersion,
+  replication_factor: network.replicationFactor
+}))
+
+export const NetworkDefinitionApiSchema = z.object({
+  id: z.number(),
+  group_id: z.number(),
+  network_id: z.string(),
+  orchestrator_version: OrchestratorVersionSchema,
+  replication_factor: z.number().nullable(),
+  created_at: wireDate
+}).transform(network => ({
+  id: network.id,
+  groupId: network.group_id,
+  networkId: network.network_id,
+  orchestratorVersion: network.orchestrator_version,
+  replicationFactor: network.replication_factor,
+  createdAt: network.created_at
+}))
+
+export type NetworkCreateInput = z.input<typeof NetworkCreateSchema>
+export type NetworkDefinition = z.infer<typeof NetworkDefinitionApiSchema>
+
 export const NetworkStatApiSchema = z
   .record(z.string(), z.number())
   .transform((data): NetworkStat[] =>

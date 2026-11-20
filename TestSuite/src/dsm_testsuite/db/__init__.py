@@ -3,6 +3,7 @@ from .challenges import get_challenge_results_for_group, list_challenges, sync_c
 from .engine import Engine, make_engine
 from .errors import get_errors_for_run, save_error
 from .groups import GroupExists, create_group, delete_group, list_groups
+from .networks import NetworkExists, create_network, get_network, list_networks
 from .health import (
     calculate_group_uptime,
     list_group_health,
@@ -26,8 +27,10 @@ from .runs import (
 __all__ = [
     "Engine",
     "GroupExists",
+    "NetworkExists",
     "StaleRun",
     "create_group",
+    "create_network",
     "calculate_group_uptime",
     "delete_group",
     "fail_stale_runs",
@@ -35,6 +38,7 @@ __all__ = [
     "get_assertions_for_run",
     "get_challenge_results_for_group",
     "get_errors_for_run",
+    "get_network",
     "get_events_for_run",
     "get_run",
     "group_challenge_overview",
@@ -45,6 +49,7 @@ __all__ = [
     "list_group_health_history",
     "list_group_uptime",
     "list_groups",
+    "list_networks",
     "list_runs",
     "list_runs_for_challenge",
     "list_runs_for_group",
