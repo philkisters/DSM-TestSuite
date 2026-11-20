@@ -22,9 +22,9 @@ def engine():
         table.create(engine)
     with Session(engine) as session, session.begin():
         session.add_all([
-            Group(id=1, name="one", archived=False),
-            Group(id=2, name="two", archived=False),
-            Group(id=3, name="archived", archived=True),
+            Group(id=1, name="one", color="#000000", archived=False),
+            Group(id=2, name="two", color="#000000", archived=False),
+            Group(id=3, name="archived", color="#000000", archived=True),
             Challenge(id=1, key="week/test", title="test", steps=1, archived=False),
             Challenge(id=2, key="week/other", title="other", steps=1, archived=False),
         ])

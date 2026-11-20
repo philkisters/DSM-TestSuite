@@ -82,6 +82,7 @@
           v-for="[groupId, result] of sortedGroupResults"
           :key="groupId"
           :group-name="groupName(groupId)"
+          :group-color="groupStore.groups.find(group => group.id === groupId)?.color"
           :group-status="result"
           :ranking="ranking"
         />

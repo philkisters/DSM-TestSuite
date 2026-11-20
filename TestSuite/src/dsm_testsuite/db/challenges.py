@@ -166,6 +166,7 @@ def group_challenge_overview(engine: Engine, group_id: int) -> GroupChallengeOve
             raise ValueError(f"Group {group_id} not found")
         
         group_name = group.name
+        group_color = group.color
         
         # Get all non-archived challenges
         all_challenges = session.scalars(
@@ -273,6 +274,7 @@ def group_challenge_overview(engine: Engine, group_id: int) -> GroupChallengeOve
     return GroupChallengeOverview(
         group_id=group_id,
         group_name=group_name,
+        group_color=group_color,
         total_passed_challenges=total_passed,
         first_places=first_places,
         second_places=second_places,

@@ -17,6 +17,7 @@ const { getGroupChallengeOverview } = await import('../app/services/backend/grou
 const payload = {
   group_id: 7,
   group_name: 'Group 7',
+  group_color: '#3433f5',
   total_passed_challenges: 1,
   first_places: { time: 1, duration: 0, messages: 0 },
   second_places: { time: 0, duration: 1, messages: 0 },
@@ -51,6 +52,7 @@ test('group overview service fetches and transforms the full response', async (t
   assert.deepEqual(result, {
     groupId: 7,
     groupName: 'Group 7',
+    groupColor: '#3433f5',
     totalPassedChallenges: 1,
     firstPlaces: { time: 1, duration: 0, messages: 0 },
     secondPlaces: { time: 0, duration: 1, messages: 0 },

@@ -1,7 +1,7 @@
 """ORM models for the `core` schema. Alembic migrations remain the source of truth."""
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, MetaData, Text, func, text
+from sqlalchemy import BigInteger, DateTime, FetchedValue, ForeignKey, Index, MetaData, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -16,6 +16,7 @@ class Group(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(Text, unique=True)
     vm_ip: Mapped[str | None] = mapped_column(Text)
+    color: Mapped[str] = mapped_column(Text, server_default=FetchedValue())  # filled by DB trigger
     archived: Mapped[bool] = mapped_column(server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

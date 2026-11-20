@@ -25,7 +25,7 @@
         <div class="mb-4 flex items-center justify-between gap-3">
           <div>
             <h2 class="text-lg font-semibold">
-              <span class="text-primary">{{ groupName}}</span>
+              <span :style="{ color: groupColor }">{{ groupName }}</span>
                uptime
             </h2>
             <p class="text-sm text-muted">
@@ -100,7 +100,7 @@ import type { CSSProperties } from 'vue'
 import { useGroupUptime } from '~~/app/composables/useGroupUptime'
 import { OrchestratorStatus } from '~~/shared/group'
 
-const props = defineProps<{ groupId: number, groupName: string }>()
+const props = defineProps<{ groupId: number, groupName: string, groupColor?: string }>()
 const {
   uptimeSeconds,
   downtimeSeconds,

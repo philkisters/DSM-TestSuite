@@ -1,9 +1,12 @@
 <template>
-  <UPopover mode="hover" :close-delay="300">
+  <UPopover mode="hover" :close-delay="300" >
     <div class="size-2 rounded-full cursor-pointer" :class="color" />
     <template #content>
       <div class="flex flex-col items-center gap-2 p-2">
-        <div class="font-bold text-lg">{{ group.name }}</div>
+        <div class="flex justify-center items-center gap-2">  
+          <div class="size-4 rounded-full" :style="{ backgroundColor: group.color }"></div>
+          <div class="font-bold text-lg">{{ group.name }}</div>
+        </div>
         <div class="font-mono">{{ group.vmIp }}</div>
         <div class="italic">Status: {{ status }}</div>
       </div>

@@ -22,6 +22,7 @@ class Group(BaseModel):
     id: int
     name: str
     vm_ip: str | None = None
+    color: str
     created_at: datetime
 
 
@@ -223,6 +224,7 @@ class GroupChallengeOverview(BaseModel):
     """Overview of a group's performance across all challenges."""
     group_id: int
     group_name: str
+    group_color: str
     total_passed_challenges: int = Field(description="Total number of challenges passed")
     first_places: dict[str, int] = Field(description="Category (time/duration/messages) -> count")
     second_places: dict[str, int] = Field(description="Category (time/duration/messages) -> count")

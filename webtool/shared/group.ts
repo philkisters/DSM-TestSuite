@@ -6,11 +6,13 @@ export const GroupApiSchema = z.object({
   id: z.number(),
   name: z.string(),
   vm_ip: z.string(),
+  color: z.string(),
   created_at: wireDate.default(() => new Date()),
 }).strict().transform((g) => ({
   id: g.id,
   name: g.name,
   vmIp: g.vm_ip,
+  color: g.color,
   orchestratorStatus: OrchestratorStatus.UNKNOWN,
   createdAt: g.created_at,
 }))
@@ -84,6 +86,7 @@ export const GroupChallengePlaceCountsApiSchema = z.object({
 export const GroupChallengeOverviewApiSchema = z.object({
   group_id: z.number(),
   group_name: z.string(),
+  group_color: z.string(),
   total_passed_challenges: z.number().int(),
   first_places: GroupChallengePlaceCountsApiSchema,
   second_places: GroupChallengePlaceCountsApiSchema,
@@ -92,6 +95,7 @@ export const GroupChallengeOverviewApiSchema = z.object({
 }).strict().transform(overview => ({
   groupId: overview.group_id,
   groupName: overview.group_name,
+  groupColor: overview.group_color,
   totalPassedChallenges: overview.total_passed_challenges,
   firstPlaces: overview.first_places,
   secondPlaces: overview.second_places,
@@ -112,6 +116,7 @@ export class Group implements GroupModel {
   id!: number
   name!: string
   vmIp!: string
+  color!: string
   orchestratorStatus!: OrchestratorStatus
   createdAt!: Date
 

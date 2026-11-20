@@ -5,7 +5,7 @@
       <div v-if="activeGroupName !== 'Guest'" class="w-full">
         <USeparator class="my-4" />
         <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 place-items-center" v-if="showGroupHealth">
-          <GroupHealthUptime v-for="group in groups" :key="group.id" :groupId="group.id" :groupName="group.name">
+          <GroupHealthUptime v-for="group in groups" :key="group.id" :groupId="group.id" :groupName="group.name" :groupColor="group.color">
             <GroupChallengeSummary :group-id="group.id" />
           </GroupHealthUptime>
         </div>

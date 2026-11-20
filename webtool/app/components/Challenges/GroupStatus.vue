@@ -7,6 +7,10 @@
     }"
   >
     <div class="flex min-w-0 items-center gap-2">
+      <span
+        class="size-3 shrink-0 rounded-full"
+        :style="{ backgroundColor: props.groupColor }"
+      />
       <h3 class="truncate font-semibold">
         {{ props.groupName }}
       </h3>
@@ -47,6 +51,7 @@ import { formatDuration } from '~~/app/utils/challengeMetrics'
 
 const props = defineProps<{
   groupName: string
+  groupColor?: string
   groupStatus: GroupChallengeResult
   ranking: ChallengeRanking
 }>()

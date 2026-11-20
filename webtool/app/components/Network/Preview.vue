@@ -21,6 +21,10 @@ const emit = defineEmits<{
   (e: 'select', peerId: string | null): void
 }>()
 
+const groupStore = useGroupStore()
+// Peers are matched to groups by comparing their registration IP with the group's orchestrator IP.
+const colorsByHost = computed(() => new Map(groupStore.groups.map(g => [g.vmIp, g.color])))
+
 const container = ref<HTMLElement | null>(null)
 let cy: Core | null = null
 
@@ -37,13 +41,15 @@ function buildElements(peers: TopologyPeer[], highlight: string | null, fingers:
   const nodes = new Map<string, ElementDefinition>()
   const edges = new Map<string, ElementDefinition>()
 
+  const colors = new Map(peers.map(p => [p.peerId, p.host ? colorsByHost.value.get(p.host) : undefined]))
+
   const addNode = (peerId: string, known: boolean) => {
     const label = `${peerId}\n${shortHash(peerId)}`
     const existing = nodes.get(peerId)
     if (existing && !known) return
     nodes.set(peerId, {
       group: 'nodes',
-      data: { id: peerId, label, hash: hashId(peerId), imageBadge: imageBadge(props.imageCounts.get(peerId)) },
+      data: { id: peerId, label, hash: hashId(peerId), color: colors.get(peerId), imageBadge: imageBadge(props.imageCounts.get(peerId)) },
       classes: known ? '' : 'unknown'
     })
   }
@@ -153,6 +159,8 @@ onMounted(async () => {
           'text-margin-y': -8,
           'font-size': 10,
           'color': '#fff',
+          'text-outline-color': '#000',
+          'text-outline-width': 1,
           'background-color': '#16a34a',
           'background-image': 'data(imageBadge)',
           'background-width': 40,
@@ -166,6 +174,7 @@ onMounted(async () => {
         selector: 'node.unknown',
         style: { 'background-color': '#6b7280', 'border-style': 'dashed', 'border-width': 2, 'border-color': '#d1d5db' }
       },
+      { selector: 'node[color]', style: { 'background-color': 'data(color)' } },
       { selector: 'node.highlight', style: { 'border-width': 4, 'border-color': '#f59e0b' } },
       {
         selector: 'edge',
@@ -190,7 +199,7 @@ onMounted(async () => {
   applyHighlight()
 })
 
-watch([() => props.peers, () => props.highlight, () => props.fingers, () => props.imageCounts], sync)
+watch([() => props.peers, colorsByHost, () => props.highlight, () => props.fingers, () => props.imageCounts], sync)
 
 onBeforeUnmount(() => {
   cy?.destroy()

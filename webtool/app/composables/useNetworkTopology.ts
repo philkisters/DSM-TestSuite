@@ -4,6 +4,7 @@ import type { NetworkEvent } from '~~/shared/network'
 export interface TopologyPeer {
   peerId: string
   hash: string
+  host: string | null
   predecessor: string | null
   successor: string | null
 }
@@ -31,10 +32,16 @@ export function applyNetworkEvent(peers: Map<string, TopologyPeer>, event: Netwo
   const peer: TopologyPeer = existing ?? {
     peerId: event.peerId,
     hash: shortHash(event.peerId),
+    host: null,
     predecessor: null,
     successor: null
   }
   let changed = !existing
+
+  if (event.host && event.host !== peer.host) {
+    peer.host = event.host
+    changed = true
+  }
 
   if (event.peerData) {
     const predecessor = neighborId(event.peerData.predecessor)
