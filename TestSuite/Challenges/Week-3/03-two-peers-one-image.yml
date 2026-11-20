@@ -1,0 +1,56 @@
+name: two-peers-one-image
+protocols:
+  peer: v3
+  orchestrator: v1
+description: Start two peers and send them some images (there is actually more than only one image). See if they receive and store the images correctly.
+archived: false
+check_fingers: true
+check_images: true
+
+steps:
+  - action: wait
+    duration: 1
+  - action: start-peer
+    peer-name: first-peer
+  - action: join-peer
+    peer-name: first-peer
+  - assert: joined
+    peer-name: first-peer
+  - action: start-peer
+    peer-name: second-peer
+  - action: join-peer
+    peer-name: second-peer
+    bootstrap-peer-name: first-peer
+  - assert: message-sent
+    from: second-peer
+    to: first-peer
+    code: 1
+    timeout: 10
+  - assert: valid-network
+    timeout: 60
+  - action: put-images
+    peer-name: first-peer
+    images:
+      - image-1.png
+      - image-4.png
+      - image-42.png
+      - image-43.png
+      - image-44.png
+  - action: put-images
+    peer-name: second-peer
+    images:
+      - image-2.png
+      - image-3.png
+      - image-10.png
+      - image-14.png
+      - image-16.png
+  - assert: valid-network
+    timeout: 60
+  - action: stop-peer
+    peer-name: first-peer
+  - action: stop-peer
+    peer-name: second-peer
+  - action: wait
+    duration: 2
+  - assert: peers-registered
+    number: 0

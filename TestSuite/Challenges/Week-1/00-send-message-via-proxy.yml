@@ -1,0 +1,40 @@
+name: send-message-via-proxy
+protocols:
+  peer: v1
+  orchestrator: v1
+description: Check if the peers are sending their message via the proxy.
+archived: false
+
+steps:
+  - action: start-peer
+    peer-name: first-peer
+  - action: join-peer
+    peer-name: first-peer
+  - assert: joined
+    peer-name: first-peer
+  - action: start-peer
+    peer-name: second-peer
+  - action: join-peer
+    peer-name: second-peer
+    bootstrap-peer-name: first-peer
+  - assert: message-sent
+    from: second-peer
+    to: first-peer
+    code: 1
+    timeout: 10
+  - assert: joined
+    peer-name: second-peer
+  - assert: valid-network
+    timeout: 60
+  - action: leave-peer
+    peer-name: first-peer
+  - action: wait
+    duration: 3
+  - assert: valid-network
+    timeout: 60
+  - action: stop-peer
+    peer-name: first-peer
+  - action: stop-peer
+    peer-name: second-peer
+  - assert: peers-registered
+    number: 0

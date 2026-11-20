@@ -1,0 +1,33 @@
+name: join-peer
+protocols:
+  peer: v1
+  orchestrator: v1
+description: Start a peer and create a new P2P network
+archived: false
+
+steps:
+  - action: start-peer
+    peer-name: first-peer
+  - assert: peer-registered
+    peer-name: first-peer
+  - action: join-peer
+    peer-name: first-peer
+  - assert: joined
+    peer-name: first-peer
+  - assert: neighbors
+    peer-name: first-peer
+    timeout: 10
+  - action: leave-peer
+    peer-name: first-peer
+  - action: wait
+    duration: 1
+  - assert: not-joined
+    peer-name: first-peer
+  - action: wait
+    duration: 1
+  - action: stop-peer
+    peer-name: first-peer
+  - action: wait
+    duration: 1
+  - assert: peers-registered
+    number: 0

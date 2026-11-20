@@ -1,0 +1,47 @@
+name: four-peer-ring
+protocols:
+  peer: v1
+  orchestrator: v1
+description: Start four peers and let them join the ring. These should order themselves based on their hashed identifiers.
+archived: false
+
+steps:
+  - action: wait
+    duration: 1
+  - action: start-peer
+    peer-name: first-peer
+  - action: join-peer
+    peer-name: first-peer
+  - assert: joined
+    peer-name: first-peer
+  - action: start-peer
+    peer-name: second-peer
+  - action: join-peer
+    peer-name: second-peer
+    bootstrap-peer-name: first-peer
+  - action: start-peer
+    peer-name: third-peer
+  - action: join-peer
+    peer-name: third-peer
+    bootstrap-peer-name: second-peer
+  - action: start-peer
+    peer-name: fourth-peer
+  - action: join-peer
+    peer-name: fourth-peer
+    bootstrap-peer-name: second-peer
+  - assert: joined
+    peer-name: fourth-peer
+  - assert: valid-network
+    timeout: 60
+  - action: leave-peer
+    peer-name: first-peer
+  - action: stop-peer
+    peer-name: first-peer
+  - action: stop-peer
+    peer-name: second-peer
+  - action: stop-peer
+    peer-name: third-peer
+  - action: stop-peer
+    peer-name: fourth-peer
+  - assert: peers-registered
+    number: 0

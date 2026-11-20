@@ -1,0 +1,30 @@
+name: first-peer
+protocols:
+  peer: v1
+  orchestrator: v1
+description: Start a peer. This should register at the Proxy over port `9001`. Wait for 10 seconds, check if peer is still alive and registered. Then stop peer.
+archived: false
+
+steps:
+  - action: start-peer
+    peer-name: first-peer
+  - action: wait
+    duration: 1
+  - assert: peer-registered
+    peer-name: first-peer
+  - assert: peers-registered
+    number: 1
+  - action: wait
+    duration: 10
+  - assert: peer-registered
+    peer-name: first-peer
+  - assert: peers-registered
+    number: 1
+  - action: stop-peer
+    peer-name: first-peer
+  - action: wait
+    duration: 1
+  - assert: peer-not-registered
+    peer-name: first-peer
+  - assert: peers-registered
+    number: 0 

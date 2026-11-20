@@ -1,0 +1,35 @@
+name: pointy-fingers
+protocols:
+  peer: v2
+  orchestrator: v1
+description: Start a peer and create a new P2P network. Your node should respond to GET_FINGERS_REQUEST messages correctly. Since you are all alone, all finger entries should point at yourself. Like that spiderman meme. But with more fingers. And only one spiderman. 
+archived: false
+check_fingers: true
+
+steps:
+  - action: start-peer
+    peer-name: spiderman-peer
+  - assert: peer-registered
+    peer-name: spiderman-peer
+  - action: join-peer
+    peer-name: spiderman-peer
+  - assert: joined
+    peer-name: spiderman-peer
+  - assert: neighbors
+    peer-name: spiderman-peer
+  - assert: finger-table
+    peer-name: spiderman-peer
+  - action: leave-peer
+    peer-name: spiderman-peer
+  - action: wait
+    duration: 1
+  - assert: not-joined
+    peer-name: spiderman-peer
+  - action: wait
+    duration: 1
+  - action: stop-peer
+    peer-name: spiderman-peer
+  - action: wait
+    duration: 1
+  - assert: peers-registered
+    number: 0

@@ -1,0 +1,34 @@
+name: two-peers-started
+protocols:
+  peer: v1
+  orchestrator: v1
+description: Start two peers and be able to stop them individually. 
+archived: false
+
+steps:
+  - action: start-peer
+    peer-name: first-peer
+  - assert: peer-registered
+    peer-name: first-peer
+  - action: start-peer
+    peer-name: second-peer
+  - assert: peer-registered
+    peer-name: second-peer
+  - action: wait 
+    duration: 10
+  - assert: peer-registered
+    peer-name: second-peer
+  - assert: peer-registered
+    peer-name: first-peer
+  - assert: peers-registered
+    number: 2
+  - action: stop-peer
+    peer-name: first-peer
+  - assert: peer-registered
+    peer-name: second-peer
+  - assert: peers-registered
+    number: 1
+  - action: stop-peer
+    peer-name: second-peer
+  - assert: peers-registered
+    number: 0

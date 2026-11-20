@@ -1,0 +1,43 @@
+name: killing-it
+protocols:
+  peer: v1
+  orchestrator: v1
+description: Start four peers but one gets killed. No graceful goodbye, no last words. How do the others react? Do they  grieve? Do they panic? Do they simply accept that life in the ring is cheap? More importantly, will they ever get their shit together and repair the network?
+archived: false
+
+steps:
+  - action: start-peer
+    peer-name: first-peer
+  - action: join-peer
+    peer-name: first-peer
+  - assert: joined
+    peer-name: first-peer
+  - action: start-peer
+    peer-name: second-peer
+  - action: join-peer
+    peer-name: second-peer
+    bootstrap-peer-name: first-peer
+  - action: start-peer
+    peer-name: third-peer
+  - action: join-peer
+    peer-name: third-peer
+    bootstrap-peer-name: second-peer
+  - action: start-peer
+    peer-name: fourth-peer
+  - action: join-peer
+    peer-name: fourth-peer
+    bootstrap-peer-name: second-peer
+  - assert: valid-network
+    timeout: 300
+  - action: stop-peer
+    peer-name: first-peer
+  - assert: valid-network
+    timeout: 300
+  - action: stop-peer
+    peer-name: second-peer
+  - action: stop-peer
+    peer-name: third-peer
+  - action: stop-peer
+    peer-name: fourth-peer
+  - assert: peers-registered
+    number: 0

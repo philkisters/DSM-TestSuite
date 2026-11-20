@@ -1,0 +1,23 @@
+name: private-cluster-attack
+protocols:
+  peer: v2
+  orchestrator: v1
+description: Start a small network with multiple peers and ensure they register correctly. Watch out your home network is under attack. Some of your services has been DDoSed. Hopefully your network will recover. Who would do such an evil thing? Your ex, who always was jealous of your sweet little setup? Or your DSM Tutor, just to teach you a lesson?
+archived: false
+check_fingers: true
+
+steps:
+  - action: setup-network
+    peer-names: [home-assistant, tor-relay, discord-bot, meme-database, anime-downloader, minecraft-server, pirateflix, family-tracker, backup-cloud, bitcoin-miner]
+    timeout: 1
+  - assert: valid-network
+    timeout: 120
+  - action: stop-peer
+    peer-name: pirateflix
+  - action: stop-peer
+    peer-name: backup-cloud
+  - assert: valid-network
+    timeout: 300  
+  - action: destroy-network
+  - assert: peers-registered
+    number: 0

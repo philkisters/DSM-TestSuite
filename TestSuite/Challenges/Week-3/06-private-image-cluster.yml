@@ -1,0 +1,62 @@
+name: private-image-cluster
+protocols:
+  peer: v3
+  orchestrator: v1
+description: Starts a small cluster and saves some images. Peers leave gracefully, so hopefully the images are not lost. 
+archived: false
+check_fingers: true
+check_images: true
+
+steps:
+  - action: setup-network
+    peer-names: [home-assistant, tor-relay, discord-bot, meme-database, anime-downloader, minecraft-server, pirateflix, family-tracker, backup-cloud, bitcoin-miner]
+    timeout: 1
+  - assert: message-sent
+    from: tor-relay
+    to: home-assistant
+    code: 1
+    timeout: 10
+  - action: put-images
+    peer-name: home-assistant
+    images:
+      - image-1.png
+      - image-2.png
+      - image-3.png
+      - image-4.png
+      - image-5.png
+      - image-6.png
+      - image-7.png
+      - image-8.png
+      - image-9.png
+      - image-10.png
+      - image-11.png
+      - image-12.png
+      - image-13.png
+      - image-14.png
+      - image-15.png
+      - image-16.png
+      - image-17.png
+      - image-18.png
+      - image-19.png
+      - image-20.png
+  - assert: valid-network
+    timeout: 120
+  - action: leave-peer
+    peer-name: home-assistant
+  - action: leave-peer
+    peer-name: tor-relay
+  - action: leave-peer
+    peer-name: discord-bot
+  - action: leave-peer
+    peer-name: meme-database
+  - action: leave-peer
+    peer-name: anime-downloader
+  - action: leave-peer
+    peer-name: minecraft-server
+  - action: leave-peer
+    peer-name: pirateflix
+  - assert: valid-network
+    timeout: 120
+  - action: destroy-network
+  - assert: peers-registered
+    number: 0

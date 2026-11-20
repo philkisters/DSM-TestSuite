@@ -1,0 +1,23 @@
+name: list-images
+protocols:
+  peer: v3
+  orchestrator: v1
+description: Let's see if we can list the images stored on a peer in the network.
+archived: false
+check_fingers: true
+
+steps:
+  - action: start-peer
+    peer-name: first-peer
+  - assert: peer-registered
+    peer-name: first-peer
+  - action: join-peer
+    peer-name: first-peer
+  - assert: joined
+    peer-name: first-peer
+  - assert: empty-images
+    peer-name: first-peer
+  - action: stop-peer
+    peer-name: first-peer
+  - assert: peers-registered
+    number: 0

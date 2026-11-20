@@ -1,0 +1,37 @@
+name: two-peer-ring
+protocols:
+  peer: v1
+  orchestrator: v1
+description: Start two peers and let the second peer join the first peer into a two peer ring. These should be neighbors of each other in both directions (successor and predecessor).
+archived: false
+
+steps:
+  - action: wait
+    duration: 1
+  - action: start-peer
+    peer-name: first-peer
+  - action: join-peer
+    peer-name: first-peer
+  - assert: joined
+    peer-name: first-peer
+  - action: start-peer
+    peer-name: second-peer
+  - action: join-peer
+    peer-name: second-peer
+    bootstrap-peer-name: first-peer
+  - assert: valid-network
+    timeout: 60
+  - action: leave-peer
+    peer-name: first-peer
+  - action: wait
+    duration: 3
+  - assert: valid-network
+    timeout: 60
+  - action: stop-peer
+    peer-name: first-peer
+  - action: stop-peer
+    peer-name: second-peer
+  - action: wait
+    duration: 2
+  - assert: peers-registered
+    number: 0

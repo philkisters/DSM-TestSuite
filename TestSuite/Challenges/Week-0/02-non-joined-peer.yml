@@ -1,0 +1,16 @@
+name: non-joined-peer
+protocols:
+  peer: v1
+  orchestrator: v1
+description: Start a peer. This peer should not yet join a P2P network. Messages send to this peer should return an error message.
+archived: false
+
+steps:
+  - action: start-peer
+    peer-name: non-joined-peer
+  - assert: peer-registered
+    peer-name: non-joined-peer
+  - assert: not-joined
+    peer-name: non-joined-peer
+  - action: stop-peer
+    peer-name: non-joined-peer

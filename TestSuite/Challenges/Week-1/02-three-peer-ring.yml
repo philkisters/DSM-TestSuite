@@ -1,0 +1,46 @@
+name: three-peer-ring
+protocols:
+  peer: v1
+  orchestrator: v1
+description: Start three peers and let the second and third peers join the ring. These should order themselves based on their hashed identifiers.
+archived: false
+
+steps:
+  - action: wait
+    duration: 1
+  - action: start-peer
+    peer-name: first-peer
+  - action: join-peer
+    peer-name: first-peer
+  - assert: joined
+    peer-name: first-peer
+  - action: start-peer
+    peer-name: second-peer
+  - action: join-peer
+    peer-name: second-peer
+    bootstrap-peer-name: first-peer
+  - action: wait
+    duration: 5
+  - action: start-peer
+    peer-name: third-peer
+  - action: join-peer
+    peer-name: third-peer
+    bootstrap-peer-name: second-peer
+  - assert: joined
+    peer-name: third-peer
+  - assert: valid-network
+    timeout: 60
+  - action: leave-peer
+    peer-name: first-peer
+  - assert: valid-network
+    timeout: 60
+  - action: stop-peer
+    peer-name: first-peer
+  - action: stop-peer
+    peer-name: second-peer
+  - action: stop-peer
+    peer-name: third-peer
+  - action: wait
+    duration: 2
+  - assert: peers-registered
+    number: 0

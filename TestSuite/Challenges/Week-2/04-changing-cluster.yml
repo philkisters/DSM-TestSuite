@@ -1,0 +1,46 @@
+name: changing-cluster
+protocols:
+  peer: v2
+  orchestrator: v1
+description: Start a small cluster that changes over time. Some peers are leaving with a goodbye message. Some peers leave unexpectedly. But there are also new peers joining, keeping the network dynamic and evolving. 
+archived: false
+check_fingers: true
+
+steps:
+  - action: setup-network
+    peer-names: [home-assistant, tor-relay, discord-bot, meme-database, anime-downloader, minecraft-server, pirateflix, family-tracker, backup-cloud, bitcoin-miner]
+    timeout: 1
+  - assert: valid-network
+    timeout: 120
+  - action: stop-peer
+    peer-name: pirateflix
+  - action: start-peer
+    peer-name: netpirate
+  - action: wait
+    duration: 1
+  - action: join-peer
+    peer-name: netpirate
+    bootstrap-peer-name: home-assistant
+  - action: start-peer
+    peer-name: pihole
+  - action: join-peer
+    peer-name: pihole
+    bootstrap-peer-name: meme-database
+  - assert: valid-network
+    timeout: 300  
+  - action: leave-peer
+    peer-name: pihole
+  - action: stop-peer
+    peer-name: pihole
+  - action: stop-peer
+    peer-name: minecraft-server
+  - action: start-peer
+    peer-name: ttt-server
+  - action: join-peer
+    peer-name: ttt-server
+    bootstrap-peer-name: anime-downloader
+  - assert: valid-network
+    timeout: 300 
+  - action: destroy-network
+  - assert: peers-registered
+    number: 0

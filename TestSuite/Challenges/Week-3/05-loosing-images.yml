@@ -1,0 +1,72 @@
+name: loosing-images
+protocols:
+  peer: v3
+  orchestrator: v1
+description: Start three peers and distribute multiple images among them. Then one just stops out of the blue. And all the images are lost. How could the peer do that to the network? 
+archived: false
+check_images: true
+check_fingers: true
+
+steps:
+  - action: start-peer
+    peer-name: first-peer
+  - action: join-peer
+    peer-name: first-peer
+  - assert: joined
+    peer-name: first-peer
+  - action: start-peer
+    peer-name: second-peer
+  - action: join-peer
+    peer-name: second-peer
+    bootstrap-peer-name: first-peer
+  - assert: message-sent
+    from: second-peer
+    to: first-peer
+    code: 1
+    timeout: 10
+  - action: start-peer
+    peer-name: third-peer
+  - action: join-peer
+    peer-name: third-peer
+    bootstrap-peer-name: second-peer
+  - assert: joined
+    peer-name: third-peer
+  - assert: valid-network
+    timeout: 60
+  - action: put-images
+    peer-name: first-peer
+    images:
+      - image-1.png
+      - image-2.png
+      - image-11.png
+      - image-22.png
+      - image-13.png
+      - image-23.png
+  - action: put-images
+    peer-name: second-peer
+    images:
+      - image-3.png
+      - image-4.png
+      - image-14.png
+      - image-24.png
+      - image-34.png
+  - action: put-images
+    peer-name: third-peer
+    images:
+      - image-5.png
+      - image-6.png
+      - image-15.png
+      - image-25.png
+      - image-35.png
+  - assert: valid-network
+    timeout: 60
+  - action: stop-peer
+    peer-name: first-peer
+  - assert: valid-network
+    timeout: 60
+  - action: stop-peer
+    peer-name: second-peer
+  - action: stop-peer
+    peer-name: third-peer
+  - assert: peers-registered
+    number: 0

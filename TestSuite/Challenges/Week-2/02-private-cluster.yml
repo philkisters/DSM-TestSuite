@@ -1,0 +1,17 @@
+name: private-cluster
+protocols:
+  peer: v2
+  orchestrator: v1
+description: Start a small network with multiple peers and ensure they register correctly. And all the peers should have the correct neighbors and fingers. Lets start simple with 10 peers. This will also test how well your orchestrator and peer manager handles the amount of peers. If it doesn't work we need to request more resources from the IRZ for the virtual machines. So better program efficient. 
+archived: false
+check_fingers: true
+
+steps:
+  - action: setup-network
+    peer-names: [home-assistant, tor-relay, discord-bot, meme-database, anime-downloader, minecraft-server, pirateflix, family-tracker, backup-cloud, bitcoin-miner]
+    timeout: 1
+  - assert: valid-network
+    timeout: 120
+  - action: destroy-network
+  - assert: peers-registered
+    number: 0
